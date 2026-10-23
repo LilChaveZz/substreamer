@@ -33,10 +33,10 @@ index 6fcabc3..aaaf793 100644
          childScreenContainers.clear()
      }
 diff --git a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragment.kt b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragment.kt
-index b9e6e2e..3987c9a 100644
+index 10b64cf..8292050 100644
 --- a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragment.kt
 +++ b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragment.kt
-@@ -500,7 +500,15 @@ class ScreenStackFragment :
+@@ -507,7 +507,15 @@ class ScreenStackFragment :
  
      override fun canNavigateBack(): Boolean {
          val container: ScreenContainer? = screen.container
@@ -54,12 +54,12 @@ index b9e6e2e..3987c9a 100644
              // this screen is the root of the container, if it is nested we can check parent container
              // if it is also a root or not
 diff --git a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackHeaderConfig.kt b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackHeaderConfig.kt
-index f9648bc..24b4050 100644
+index 68b8d85..e6f15c6 100644
 --- a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackHeaderConfig.kt
 +++ b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackHeaderConfig.kt
-@@ -232,7 +232,16 @@ class ScreenStackHeaderConfig(
-         val stack = screenStack
-         val isTop = stack == null || stack.topScreen == parent
+@@ -238,7 +238,16 @@ class ScreenStackHeaderConfig(
+         }
+         val isTop = stack.topScreen == parent
  
 -        if (!isAttachedToWindow || !isTop || isDestroyed) {
 +        // Local patch (substreamer-rn): also bail when stack is null. The
@@ -76,7 +76,7 @@ index f9648bc..24b4050 100644
          }
  
 diff --git a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenViewManager.kt b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenViewManager.kt
-index 4cb201b..c8a32a8 100644
+index df9e242..2767b86 100644
 --- a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenViewManager.kt
 +++ b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenViewManager.kt
 @@ -95,6 +95,24 @@ open class ScreenViewManager :

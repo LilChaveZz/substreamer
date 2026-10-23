@@ -76,7 +76,6 @@
       "./plugins/dedupe-lc++",
       "./plugins/fix-jvm-target",
       "./plugins/large-heap",
-      "./plugins/set-gradle-version",
       "./plugins/with-gradle-memory",
       "./plugins/with-proguard-optimize",
       "./modules/expo-ssl-trust/plugin",

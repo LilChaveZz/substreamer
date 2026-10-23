@@ -1,8 +1,8 @@
 diff --git a/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/fabric/mounting/mountitems/IntBufferBatchMountItem.kt b/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/fabric/mounting/mountitems/IntBufferBatchMountItem.kt
-index 086eb37..efb2d04 100644
+index c4026f3..db5dead 100644
 --- a/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/fabric/mounting/mountitems/IntBufferBatchMountItem.kt
 +++ b/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/fabric/mounting/mountitems/IntBufferBatchMountItem.kt
-@@ -193,150 +193,53 @@ internal class IntBufferBatchMountItem(
+@@ -193,160 +193,53 @@ internal class IntBufferBatchMountItem(
    override fun isBatchEmpty(): Boolean = intBufferLen == 0
  
    override fun toString(): String {
@@ -44,7 +44,7 @@ index 086eb37..efb2d04 100644
 -                      intBuffer[i++],
 -                      intBuffer[i++],
 -                      fabricComponentName,
--                  )
+-                  ),
 -              )
 -            }
 -            INSTRUCTION_DELETE ->
@@ -57,7 +57,7 @@ index 086eb37..efb2d04 100644
 -                        intBuffer[i++],
 -                        intBuffer[i++],
 -                        intBuffer[i++],
--                    )
+-                    ),
 -                )
 -            INSTRUCTION_REMOVE ->
 -                s.append(
@@ -67,7 +67,7 @@ index 086eb37..efb2d04 100644
 -                        intBuffer[i++],
 -                        intBuffer[i++],
 -                        intBuffer[i++],
--                    )
+-                    ),
 -                )
 -            INSTRUCTION_UPDATE_PROPS -> {
 -              val props = objBuffer[j++]
@@ -75,7 +75,12 @@ index 086eb37..efb2d04 100644
 -                  if (FabricUIManager.IS_DEVELOPMENT_ENVIRONMENT) (props?.toString() ?: "<null>")
 -                  else "<hidden>"
 -              s.append(
--                  String.format(Locale.ROOT, "UPDATE PROPS [%d]: %s\n", intBuffer[i++], propsString)
+-                  String.format(
+-                      Locale.ROOT,
+-                      "UPDATE PROPS [%d]: %s\n",
+-                      intBuffer[i++],
+-                      propsString,
+-                  ),
 -              )
 -            }
 -            INSTRUCTION_UPDATE_STATE -> {
@@ -84,7 +89,12 @@ index 086eb37..efb2d04 100644
 -                  if (FabricUIManager.IS_DEVELOPMENT_ENVIRONMENT) (state?.toString() ?: "<null>")
 -                  else "<hidden>"
 -              s.append(
--                  String.format(Locale.ROOT, "UPDATE STATE [%d]: %s\n", intBuffer[i++], stateString)
+-                  String.format(
+-                      Locale.ROOT,
+-                      "UPDATE STATE [%d]: %s\n",
+-                      intBuffer[i++],
+-                      stateString,
+-                  ),
 -              )
 -            }
 -            INSTRUCTION_UPDATE_LAYOUT ->
@@ -101,7 +111,7 @@ index 086eb37..efb2d04 100644
 -                        intBuffer[i++],
 -                        intBuffer[i++],
 -                        intBuffer[i++],
--                    )
+-                    ),
 -                )
 -            INSTRUCTION_UPDATE_PADDING ->
 -                s.append(
@@ -113,7 +123,7 @@ index 086eb37..efb2d04 100644
 -                        intBuffer[i++],
 -                        intBuffer[i++],
 -                        intBuffer[i++],
--                    )
+-                    ),
 -                )
 -            INSTRUCTION_UPDATE_OVERFLOW_INSET ->
 -                s.append(
@@ -125,7 +135,7 @@ index 086eb37..efb2d04 100644
 -                        intBuffer[i++],
 -                        intBuffer[i++],
 -                        intBuffer[i++],
--                    )
+-                    ),
 -                )
 -            INSTRUCTION_UPDATE_EVENT_EMITTER -> {
 -              j += 1
@@ -134,7 +144,7 @@ index 086eb37..efb2d04 100644
 -            else -> {
 -              FLog.e(TAG, "String so far: $s")
 -              throw IllegalArgumentException(
--                  "Invalid type argument to IntBufferBatchMountItem: $type at index: $i"
+-                  "Invalid type argument to IntBufferBatchMountItem: $type at index: $i",
 -              )
 -            }
 -          }
@@ -191,16 +201,16 @@ index 086eb37..efb2d04 100644
    }
  
 diff --git a/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm b/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
-index a1111f9..56af7be 100644
+index f3ec9bc..b19ca1c 100644
 --- a/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
 +++ b/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
-@@ -460,9 +460,19 @@ TraceSection s(
+@@ -539,9 +539,19 @@ TraceSection s(
      @try {
        [inv invokeWithTarget:strongModule];
      } @catch (NSException *exception) {
 -      // Void methods are always async, re-throw instead of converting to
 -      // JSError, same as the async branch in performMethodInvocation.
--      @throw exception;
+-      @throw addModuleIdentityToException(exception, std::string{moduleName}, methodNameStr);
 +      // Void methods are always async. Re-throwing here propagates an uncaught
 +      // NSException on the background method queue, which nothing catches and so
 +      // aborts the whole process (objc_exception_rethrow -> std::terminate ->

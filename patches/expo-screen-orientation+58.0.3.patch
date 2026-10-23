@@ -1,0 +1,16 @@
+diff --git a/node_modules/expo-screen-orientation/ios/ScreenOrientationRegistry.swift b/node_modules/expo-screen-orientation/ios/ScreenOrientationRegistry.swift
+index f7fc584..359e1b8 100644
+--- a/node_modules/expo-screen-orientation/ios/ScreenOrientationRegistry.swift
++++ b/node_modules/expo-screen-orientation/ios/ScreenOrientationRegistry.swift
+@@ -102,8 +102,9 @@ public class ScreenOrientationRegistry: NSObject, UIApplicationDelegate {
+         #endif
+       }
+       self.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+-      UIDevice.current.setValue(newOrientation.rawValue, forKey: "orientation")
+-      UIViewController.attemptRotationToDeviceOrientation()
++      // patch-package: dropped the UIDevice "orientation" KVO and attemptRotationToDeviceOrientation.
++      // The minimum is iOS 16.4, where requestGeometryUpdate above does the rotation and the KVO
++      // only logs "BUG IN CLIENT OF UIKIT: Setting UIDevice.orientation is not supported".
+ 
+       if self.currentScreenOrientation == .unknown {
+         // CurrentScreenOrientation might be unknown (especially just after launch), but at this point we already know it.
