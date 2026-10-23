@@ -91,7 +91,7 @@
     "react-native-nitro-modules": "^0.37.1",
     "react-native-queue-player": "3.0.0",
     "react-native-reanimated": "4.7.1",
-    "react-native-reorderable-list": "^0.18.0",
+    "react-native-reorderable-list": "^0.18.2",
     "react-native-safe-area-context": "~5.10.1",
     "react-native-screens": "~4.30.0",
     "react-native-svg": "15.16.0",
