@@ -186,8 +186,7 @@ try {
   console.warn('[layout] Dimensions.get failed; assuming phone:', errMessage(e));
 }
 
-// Lock orientation to portrait on phones; tablets rotate freely, governed at runtime by
-// the orientation lock setting in layoutPreferencesStore. The whole call is wrapped
+// Lock orientation to portrait on phones; tablets rotate freely. The whole call is wrapped
 // because the synchronous property access on ScreenOrientation.OrientationLock throws
 // when the native module is missing — the `.catch()` only covers promise rejection.
 if (!IS_TABLET) {
