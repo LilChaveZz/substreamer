@@ -599,6 +599,27 @@ describe('dataSyncService — deferred startup prefetches', () => {
     expect(syncStatusStore.getState().librarySyncPhase).toBe('paused-error');
   });
 
+  it('does not start a new sync after the user pauses the startup sync', async () => {
+    // Pause bumps the generation and the startup run bails, which resolves the startup
+    // library promise. Launching the song sync after that would undo the Pause.
+    albumLibraryState.albums = [];
+    syncStatusStore.setState({ librarySyncComplete: false, songSyncComplete: false });
+    let finishFetch: () => void = () => undefined;
+    mockFetchAllAlbums.mockImplementationOnce(
+      () => new Promise<void>((resolve) => { finishFetch = resolve; }),
+    );
+
+    await onStartup();
+    await jest.advanceTimersByTimeAsync(2000);
+    expect(mockRunNormalizedLibrarySync).toHaveBeenCalledTimes(1);
+
+    cancelAllSyncs('user-cancel');
+    finishFetch();
+    await jest.advanceTimersByTimeAsync(2000);
+
+    expect(mockRunNormalizedLibrarySync).toHaveBeenCalledTimes(1);
+  });
+
   it('does NOT refresh playlists on startup when offline', async () => {
     offlineState.offline = true;
     playlistLibraryState.playlists = [{ id: 'p1' }];

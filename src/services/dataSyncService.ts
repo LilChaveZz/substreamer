@@ -296,6 +296,9 @@ async function resumeFlowBody(): Promise<void> {
   // network fan-out off the splash → first-paint critical path.
   runWhenIdle(() => {
     setTimeout(async () => {
+      // A Pause (or logout) during the startup sync bumps this; nothing below may then
+      // start a fresh run and undo it.
+      const startGen = syncStatusStore.getState().generation;
       // Full album-LIST fetch only when it isn't already complete on disk. A
       // completed library with rows present skips straight to change-detection;
       // an interrupted/partial fetch (librarySyncComplete=false) resumes the
@@ -395,6 +398,7 @@ async function resumeFlowBody(): Promise<void> {
       } catch {
         /* library fetch swallows its own errors; walk will see empty albums */
       }
+      if (syncStatusStore.getState().generation !== startGen) return;
       if (!offlineModeStore.getState().offlineMode) {
         // Detect changes since last session (scan status or newest-album probe) and
         // surface any new albums + their songs. Detect errors are swallowed — fire
