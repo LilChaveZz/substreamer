@@ -301,8 +301,14 @@ async function resumeFlowBody(): Promise<void> {
     return;
   }
 
+  // Not awaited, and with no network timeout it can land after a logout, or after the
+  // next login as someone else. Keep it only for the session that asked.
+  const askedFor = authStore.getState();
   fetchServerInfo().then((info) => {
-    if (info) serverInfoStore.getState().setServerInfo(info);
+    const now = authStore.getState();
+    if (!info || !now.isLoggedIn) return;
+    if (now.serverUrl !== askedFor.serverUrl || now.username !== askedFor.username) return;
+    serverInfoStore.getState().setServerInfo(info);
   });
   fetchScanStatus();
   // Eager home-list refresh, gated on offline/reachability via refreshAllIfDue(0)

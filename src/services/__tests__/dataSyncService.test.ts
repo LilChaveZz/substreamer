@@ -440,9 +440,38 @@ describe('dataSyncService — pass-through invocations', () => {
   it('onStartup applies serverInfo when fetchServerInfo returns non-null', async () => {
     const info = { version: '1.16.1' };
     mockFetchServerInfo.mockResolvedValueOnce(info);
+    authStore.setState({ isLoggedIn: true, serverUrl: 'https://a', username: 'u' });
     await onStartup();
     await new Promise((r) => setImmediate(r));
     expect(mockSetServerInfo).toHaveBeenCalledWith(info);
+  });
+
+  describe('a server-info answer that lands late', () => {
+    // Not awaited and no network timeout: it can arrive after logout, and must not refill
+    // the store with the old server's details.
+    const startWithHeldInfo = async () => {
+      let answer: (v: unknown) => void = () => undefined;
+      mockFetchServerInfo.mockImplementationOnce(() => new Promise((r) => { answer = r; }));
+      authStore.setState({ isLoggedIn: true, serverUrl: 'https://a', username: 'u' });
+      await onStartup();
+      return (info: unknown) => answer(info);
+    };
+
+    it('is dropped after logout', async () => {
+      const answer = await startWithHeldInfo();
+      authStore.setState({ isLoggedIn: false, serverUrl: null, username: null });
+      answer({ version: '1.16.1' });
+      await new Promise((r) => setImmediate(r));
+      expect(mockSetServerInfo).not.toHaveBeenCalled();
+    });
+
+    it('is dropped after logout and a login as another account', async () => {
+      const answer = await startWithHeldInfo();
+      authStore.setState({ isLoggedIn: true, serverUrl: 'https://b', username: 'other' });
+      answer({ version: '1.16.1' });
+      await new Promise((r) => setImmediate(r));
+      expect(mockSetServerInfo).not.toHaveBeenCalled();
+    });
   });
 
   it('onStartup is a no-op when offline', async () => {
