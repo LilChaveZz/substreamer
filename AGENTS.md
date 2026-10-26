@@ -435,5 +435,6 @@ When the user corrects your approach, append a one-line rule here before ending 
 - **Don't paste plan/tracker contents back into chat.** Summarize the headlines; the file is the artifact.
 - **Commit as you go; never spend time splitting a missed commit.** If changes piled up and do not separate cleanly by whole file, bundle them into one commit — no hand-built intermediate file states, no asking how to split.
 - Affirmative action in a confirmation dialog uses a positive label (OK/Delete), never Cancel.
+- User-facing copy: never a comma before "and"; write "one time" as two words, never "one-time".
 - Shares exist for albums, playlists and the player queue — not individual songs.
 - Drop a one-line status note when working silently for a long stretch.

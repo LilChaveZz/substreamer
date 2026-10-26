@@ -55,6 +55,11 @@ export function LoginScreen() {
     if (!certInfo || !certHostname) return;
 
     setCertModalVisible(false);
+    // Same refusal as `handleSubmit`: the manual trust button reaches this without it.
+    if (!isDbHealthy()) {
+      setError(t('persistenceDegradedLoginError'));
+      return;
+    }
     setLoading(true);
     setError(null);
 
