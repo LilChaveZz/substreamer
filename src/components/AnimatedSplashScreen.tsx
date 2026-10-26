@@ -156,7 +156,10 @@ export default function AnimatedSplashScreen({ onFinish }: Props) {
           // probe and would read `cached_songs` and `favorite_songs` WHILE the pass is
           // rewriting their ids — landing a mixture of retired and canonical ids in
           // memory, some of it through the SYNC adapter. The pass does its own
-          // `rehydrateAllStores()` at the end, once the ids have settled.
+          // `rehydrateAllStores()` at the end, once the ids have settled. A hydration
+          // can still be running from the splash's no-migration branch below or the
+          // headless bootstrap; the pass waits for its one writer, the download
+          // metadata conversion, before its first write.
           if (!isReidRequired()) void rehydrateAllStores();
           // The chain has finished, which is the only moment the re-key can trust the
           // schema. Deliberately NOT keyed off the splash finishing: the safety timeout

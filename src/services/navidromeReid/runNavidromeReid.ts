@@ -38,6 +38,7 @@ import { rehydrateAllStores } from '../../store/persistence/rehydrate';
 import { ratingStore } from '../../store/ratingStore';
 import { syncStatusStore } from '../../store/syncStatusStore';
 import { clearImageQueue } from '../../store/persistence/imageDownloadQueueTable';
+import { legacyMetadataConversionInFlight } from '../../store/persistence/musicCacheTables';
 import { getDb } from '../../store/persistence/db';
 import { buildIdMap, createIdMap, dropIdMap } from './reidMap';
 import { moveDownloadedFiles } from './reidFiles';
@@ -294,6 +295,11 @@ async function execute(verdict: string): Promise<void> {
       unsubscribe();
     }
   }
+
+  // A store hydration converting legacy download metadata reads rows and writes them back
+  // by key; a conversion read before the re-key would write retired artist and album ids
+  // back after it. No new hydration starts while the gate holds startup.
+  await legacyMetadataConversionInFlight();
 
   try {
     // Prove the deferral works on THIS build before writing anything. The spike that

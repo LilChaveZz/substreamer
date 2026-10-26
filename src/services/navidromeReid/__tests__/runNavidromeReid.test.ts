@@ -117,6 +117,14 @@ jest.mock('../reidMigrationLog', () => ({
   appendReidLog: (...args: unknown[]) => mockAppendReidLog(...args),
 }));
 
+let mockConversion: Promise<unknown> | null = null;
+jest.mock('../../../store/persistence/musicCacheTables', () => ({
+  legacyMetadataConversionInFlight: () => {
+    if (mockConversion) mockCalls.push('awaitConversion');
+    return mockConversion ?? Promise.resolve();
+  },
+}));
+
 jest.mock('../../../store/persistence/rehydrate', () => ({
   rehydrateAllStores: () => { mockCalls.push('rehydrateAllStores'); return Promise.resolve({ failed: [] }); },
 }));
@@ -195,6 +203,7 @@ beforeEach(() => {
   mockLegacy = false;
   mockContinued = false;
   mockHoldsServerIds = true;
+  mockConversion = null;
   mockReconcile = null;
   appStateStore.setState({ isActive: true });
   mockSetReidState.mockClear();
@@ -411,6 +420,31 @@ describe('without a server to refill from', () => {
   mockLog.mockClear();
     await runNavidromeReidIfNeeded();
     expect(mockCalls).toContain('discardLibrary');
+    expect(mockCalls).toContain('setReidState:complete');
+  });
+});
+
+describe('the download metadata conversion', () => {
+  // A hydration converting legacy download rows writes them back by key; one read before
+  // the re-key would write retired artist and album ids back after it.
+  it('writes nothing until a conversion in flight has finished', async () => {
+    let finish = (): void => {};
+    mockConversion = new Promise<void>((r) => { finish = r; });
+    const run = runNavidromeReidIfNeeded();
+    try {
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mockCalls).toContain('awaitConversion');
+      expect(mockCalls).not.toContain('clearLiveQueue');
+      expect(mockCalls).not.toContain('rekeyPlainColumns');
+    } finally {
+      // Always release it: a stuck pass would hold `inFlight` for every later test.
+      finish();
+      await run;
+    }
+
+    expect(idx('awaitConversion')).toBeLessThan(idx('clearLiveQueue'));
     expect(mockCalls).toContain('setReidState:complete');
   });
 });
