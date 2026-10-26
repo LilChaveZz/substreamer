@@ -240,9 +240,9 @@ export function initMusicCache(): void {
 
 /**
  * Unregister the AppState listener and clear the cached directory handle.
- * Called from `resetAllStores()` on logout so a background→foreground
- * transition while logged out doesn't fire recovery against a reset store.
- * The next login re-arms the listener via `initMusicCache()`.
+ * Called at the start of `resetAllStores()` so a background→foreground
+ * transition mid-logout doesn't fire recovery against a half-reset store.
+ * Logout's `clearMusicCache()` re-initialises the cache, re-arming it.
  */
 export function teardownMusicCache(): void {
   appStateSubscription?.remove();

@@ -7,8 +7,6 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
 import { useThemedAlert } from '../../hooks/useThemedAlert';
 import { settingsStyles } from '../../styles/settingsStyles';
-import { clearImageCache } from '../../services/imageCacheService';
-import { clearMusicCache } from '../../services/musicCacheService';
 import { clearQueue } from '../../services/playerService';
 import { stopPolling } from '../../services/scanService';
 import { clearAllNativeTrust } from '../../services/sslTrustService';
@@ -91,8 +89,6 @@ export function AccountCard() {
       // a self-signed re-login re-prompts instead of racing a still-trusted cert.
       await clearAllNativeTrust();
       await resetAllStores();
-      await clearImageCache();
-      await clearMusicCache();
       // Hold the overlay for a minimum beat BEFORE moving to login. A fresh install
       // with little to clear finishes almost instantly, and the overlay flashing up
       // and vanishing reads as a glitch rather than as work being done.
