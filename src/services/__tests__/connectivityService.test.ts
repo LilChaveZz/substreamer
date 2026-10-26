@@ -146,6 +146,24 @@ describe('ping cycle', () => {
     expect(mockStoreState.setServerReachable).toHaveBeenCalledWith(true);
   });
 
+  it('a ping still in flight when monitoring stops does not restart the heartbeat', async () => {
+    let answer: (v: { status: string }) => void = () => undefined;
+    mockPing.mockImplementationOnce(() => new Promise((r) => { answer = r; }));
+    startMonitoring();
+    mockNetInfoCallback!({ isConnected: true, type: 'wifi' });
+    await jest.advanceTimersByTimeAsync(0);
+    expect(mockPing).toHaveBeenCalledTimes(1);
+
+    stopMonitoring();
+    mockStoreState.setServerReachable.mockClear();
+    answer({ status: 'failed' });
+    await jest.advanceTimersByTimeAsync(120_000);
+
+    // No result recorded, and nothing pinging after logout or in offline mode.
+    expect(mockStoreState.setServerReachable).not.toHaveBeenCalled();
+    expect(mockPing).toHaveBeenCalledTimes(1);
+  });
+
   it('pings server when AppState becomes active', async () => {
     mockPing.mockResolvedValue({ status: 'ok' });
     startMonitoring();

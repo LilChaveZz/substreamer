@@ -70,6 +70,9 @@ let lastNetKey: string | null = null;
 // Paused while the app is backgrounded — stops the ping heartbeat (and the
 // WiFi-event-driven pings) from running during background audio playback.
 let monitoringPaused = false;
+// Between startMonitoring and stopMonitoring. A ping still in flight when monitoring
+// stops must not record its result or restart the heartbeat.
+let monitoringActive = false;
 
 // First-ping signal: lets background tasks (e.g. image-cache repair) gate
 // destructive decisions on a confirmed server-reachability result rather
@@ -127,7 +130,7 @@ function schedulePing(): void {
   clearPingTimer();
   // Don't reschedule while backgrounded — an in-flight ping's completion must
   // not restart the heartbeat. Foreground resume re-pings explicitly.
-  if (monitoringPaused) return;
+  if (monitoringPaused || !monitoringActive) return;
   const { isServerReachable } = connectivityStore.getState();
   // Speed up polling as soon as we see ANY failure (not only after we've
   // flipped to unreachable). Catches transient blips faster so the
@@ -167,8 +170,10 @@ async function pingServer(): Promise<void> {
   pingInFlight = true;
   try {
     const response = await withTimeout(api.ping(), PING_TIMEOUT_MS);
+    if (!monitoringActive) return;
     handleServerResult(response.status === 'ok');
   } catch (err) {
+    if (!monitoringActive) return;
     const message = errMessage(err);
     if (isSSLError(message)) {
       handleSslError();
@@ -296,6 +301,7 @@ export async function recheckNow(): Promise<void> {
 
 export function startMonitoring(): void {
   if (unsubscribeNetInfo) return;
+  monitoringActive = true;
 
   initialCheck = true;
   pingInFlight = false;
@@ -322,6 +328,7 @@ export function startMonitoring(): void {
 }
 
 export function stopMonitoring(): void {
+  monitoringActive = false;
   if (unsubscribeNetInfo) {
     unsubscribeNetInfo();
     unsubscribeNetInfo = null;
