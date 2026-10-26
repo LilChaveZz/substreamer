@@ -263,8 +263,8 @@ export function hasServerAnswered(): boolean {
   return serverAnswered;
 }
 
-/** Test-only: forget the probe result. */
-export function resetReidProbeForTests(): void {
+/** Forget the probe result, so the next session decides afresh. Called at login. */
+export function resetReidProbeState(): void {
   probedVersion = null;
   probeSettled = false;
   serverAnswered = false;

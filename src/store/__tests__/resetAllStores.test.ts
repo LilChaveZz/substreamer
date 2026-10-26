@@ -88,6 +88,7 @@ import { processingOverlayStore } from '../processingOverlayStore';
 import { searchStore } from '../searchStore';
 import { resetAllStores } from '../resetAllStores';
 import { syncStatusStore } from '../syncStatusStore';
+import { migrationGateStore } from '../migrationGateStore';
 import { clearImageCache } from '../../services/imageCacheService';
 import { clearMusicCache } from '../../services/musicCacheService';
 
@@ -243,6 +244,14 @@ describe('resetAllStores', () => {
       expect(order).toBeLessThan(kv);
     }
     resetLibrarySync.mockRestore();
+  });
+
+  it('clears a pending-update notice so it does not reach the next account', async () => {
+    migrationGateStore.getState().setDeferred(true);
+
+    await resetAllStores();
+
+    expect(migrationGateStore.getState().deferred).toBe(false);
   });
 
   it('only ever raises the sync generation', async () => {

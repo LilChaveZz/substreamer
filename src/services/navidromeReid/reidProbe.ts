@@ -28,10 +28,15 @@ const PROBE_TIMEOUT_MS = 4_000;
 let probeInFlight: Promise<void> | null = null;
 let probeDone = false;
 
-/** Test-only: allow another probe. */
-export function resetReidProbeInFlightForTests(): void {
+/** Forget this session's probe, so the next session asks afresh. Called at login. */
+export function resetProbeState(): void {
   probeInFlight = null;
   probeDone = false;
+}
+
+/** Login's own ping already answered for this session; do not ping again. */
+export function markProbeDone(): void {
+  probeDone = true;
 }
 
 /**

@@ -41,10 +41,10 @@ jest.mock('../../../store/serverInfoStore', () => ({
   serverInfoStore: { getState: () => ({ serverType: mockServerType, serverVersion: mockServerVersion }) },
 }));
 
-import { probeServerVersion, resetReidProbeInFlightForTests } from '../reidProbe';
+import { probeServerVersion, resetProbeState } from '../reidProbe';
 import {
   clearReidMarker,
-  resetReidProbeForTests,
+  resetReidProbeState,
   shouldBlockLibraryWrites,
   isReidComplete,
   isReidRequired,
@@ -69,8 +69,8 @@ beforeEach(() => {
   mockOfflineMode = false;
   mockHasConnection = true;
   mockServerReachable = true;
-  resetReidProbeForTests();
-  resetReidProbeInFlightForTests();
+  resetReidProbeState();
+  resetProbeState();
   resetReidSessionLatches();
 });
 

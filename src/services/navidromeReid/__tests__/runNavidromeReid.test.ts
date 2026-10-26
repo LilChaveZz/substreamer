@@ -82,6 +82,11 @@ jest.mock('../reidLibrary', () => ({
   discardLibrary: () => { mockCalls.push('discardLibrary'); return Promise.resolve(45); },
 }));
 
+let mockHoldsServerIds = true;
+jest.mock('../reidInstall', () => ({
+  installHoldsServerIds: () => Promise.resolve(mockHoldsServerIds),
+}));
+
 let mockCannotAsk = false;
 jest.mock('../reidProbe', () => ({ cannotAskNow: () => mockCannotAsk }));
 
@@ -170,6 +175,7 @@ import { migrationGateStore } from '../../../store/migrationGateStore';
 import { syncStatusStore } from '../../../store/syncStatusStore';
 import {
   chooseLegacyMode,
+  confirmAndRunNavidromeReid,
   continueWithoutUpdating,
   runNavidromeReidIfNeeded,
 } from '../runNavidromeReid';
@@ -188,6 +194,7 @@ beforeEach(() => {
   mockLog.mockClear();
   mockLegacy = false;
   mockContinued = false;
+  mockHoldsServerIds = true;
   mockReconcile = null;
   appStateStore.setState({ isActive: true });
   mockSetReidState.mockClear();
@@ -526,6 +533,29 @@ describe('a pass that starts while the app is in use', () => {
 });
 
 describe('the user\'s answers', () => {
+  it('Update now on an empty install marks it done without running the pass', async () => {
+    // Nothing to convert: what it syncs next already carries the current ids.
+    mockHoldsServerIds = false;
+    mockVerdict = 'ask';
+    migrationGateStore.getState().show('asking');
+
+    await confirmAndRunNavidromeReid();
+
+    expect(mockSetReidState).toHaveBeenCalledWith('complete');
+    expect(mockCalls).not.toContain('discardLibrary');
+    expect(migrationGateStore.getState().visible).toBe(false);
+  });
+
+  it('Update now on an install with data runs the full pass', async () => {
+    mockVerdict = 'run';
+    migrationGateStore.getState().show('asking');
+
+    await confirmAndRunNavidromeReid();
+
+    expect(mockCalls).toContain('discardLibrary');
+    expect(mockCalls).toContain('setReidState:complete');
+  });
+
   it('legacy mode hides the prompt for the session', () => {
     migrationGateStore.getState().show('asking');
 

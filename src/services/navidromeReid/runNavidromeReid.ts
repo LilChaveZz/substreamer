@@ -42,6 +42,7 @@ import { getDb } from '../../store/persistence/db';
 import { buildIdMap, createIdMap, dropIdMap } from './reidMap';
 import { moveDownloadedFiles } from './reidFiles';
 import { rekeyKvBlobs } from './reidKv';
+import { installHoldsServerIds } from './reidInstall';
 import { discardLibrary } from './reidLibrary';
 import { cannotAskNow } from './reidProbe';
 import {
@@ -186,7 +187,16 @@ function runWhenForeground(): void {
  * question back — the version string still cannot answer it and asking twice is worse
  * than remembering.
  */
-export function confirmAndRunNavidromeReid(): Promise<void> {
+export async function confirmAndRunNavidromeReid(): Promise<void> {
+  // An install holding no server data has nothing to convert: whatever it syncs next
+  // carries the server's current ids. Mark it done instead of running the full pass.
+  const db = getDb();
+  if (db && !(await installHoldsServerIds(db))) {
+    setReidState('complete');
+    migrationGateStore.getState().hide();
+    logLibrarySync('[reid] update confirmed on an empty install; marked complete');
+    return;
+  }
   setUserConfirmedReid();
   migrationGateStore.getState().confirm();
   return runNavidromeReidIfNeeded();

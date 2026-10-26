@@ -64,6 +64,7 @@ import { devOptionsStore } from './devOptionsStore';
 import { editShareStore } from './editShareStore';
 import { filterBarStore } from './filterBarStore';
 import { mbidSearchStore } from './mbidSearchStore';
+import { migrationGateStore } from './migrationGateStore';
 import { migrationStore } from './migrationStore';
 import { moreOptionsStore } from './moreOptionsStore';
 import { playbackToastStore } from './playbackToastStore';
@@ -106,6 +107,8 @@ const allStores = [
   sslCertStore,
   storageLimitStore,
   syncStatusStore,
+  // A deferral notice must not carry into the next account's Settings.
+  migrationGateStore,
   migrationStore,
   // Non-persisted
   addToPlaylistStore,
