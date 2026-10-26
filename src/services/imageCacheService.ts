@@ -38,6 +38,7 @@ import {
 import { authStore } from '../store/authStore';
 import { connectivityStore } from '../store/connectivityStore';
 import { offlineModeStore } from '../store/offlineModeStore';
+import { isReidRunning } from '../store/migrationGateStore';
 import { serverWorkAllowed } from '../utils/serverWorkAllowed';
 import { fireAndForget } from '../utils/fireAndForget';
 import { runWhenIdle } from '../utils/runWhenIdle';
@@ -592,6 +593,9 @@ export function initImageCache(): void {
             // failedRemoteIds until something clears it. The offline→online
             // toggle didn't fire if offlineMode never flipped, so clear here.
             clearFailedRemoteIds('appstate-active');
+            // Not during the re-key pass: it clears the image queue, and a repair would
+            // queue retired ids straight back into it.
+            if (isReidRunning()) return;
             await repairIncompleteImages('appstate-active');
           })(),
           'imageCache.appStateActive',
@@ -709,6 +713,7 @@ offlineModeStore.subscribe((state, prev) => {
     (async () => {
       await awaitFirstPing();
       if (offlineModeStore.getState().offlineMode) return;
+      if (isReidRunning()) return;
       await repairIncompleteImages('offline-resume');
     })(),
     'imageCache.offlineResume',

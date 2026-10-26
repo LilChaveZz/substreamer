@@ -183,6 +183,18 @@ jest.mock('../../utils/stringHelpers', () => {
   return { ...actual, minDelay: () => Promise.resolve() };
 });
 
+let mockVerdict = 'skip';
+let mockLegacy = false;
+jest.mock('../navidromeReid/reidMarker', () => ({
+  ...jest.requireActual('../navidromeReid/reidMarker'),
+  reidVerdict: () => mockVerdict,
+  isLegacyThisSession: () => mockLegacy,
+}));
+const mockRunReid = jest.fn(() => Promise.resolve());
+jest.mock('../navidromeReid/runNavidromeReid', () => ({
+  runNavidromeReidIfNeeded: () => mockRunReid(),
+}));
+
 // subsonicService uses the shared __mocks__ automock. We opt into it here and
 // reach for `fetchServerInfo` via the imported namespace.
 jest.mock('../subsonicService');
@@ -618,6 +630,33 @@ describe('dataSyncService — deferred startup prefetches', () => {
     await jest.advanceTimersByTimeAsync(2000);
 
     expect(mockRunNormalizedLibrarySync).toHaveBeenCalledTimes(1);
+  });
+
+  it('holds the fan-out and shows the prompt for an undetermined server version', async () => {
+    mockVerdict = 'ask';
+    try {
+      await onStartup();
+      await jest.advanceTimersByTimeAsync(2000);
+      expect(mockRunReid).toHaveBeenCalled();
+      expect(mockFetchStarred).not.toHaveBeenCalled();
+      expect(mockRunNormalizedLibrarySync).not.toHaveBeenCalled();
+    } finally {
+      mockVerdict = 'skip';
+    }
+  });
+
+  it('runs the fan-out once legacy mode was chosen', async () => {
+    mockVerdict = 'ask';
+    mockLegacy = true;
+    try {
+      await onStartup();
+      await jest.advanceTimersByTimeAsync(2000);
+      expect(mockRunReid).not.toHaveBeenCalled();
+      expect(mockFetchStarred).toHaveBeenCalled();
+    } finally {
+      mockVerdict = 'skip';
+      mockLegacy = false;
+    }
   });
 
   it('does NOT refresh playlists on startup when offline', async () => {

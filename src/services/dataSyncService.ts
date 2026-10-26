@@ -25,7 +25,7 @@ import { refreshDownloadedMetadata } from './downloadedMetadataService';
 import { logLibrarySync } from './librarySyncLogger';
 import { probeServerVersion } from './navidromeReid/reidProbe';
 import { runNavidromeReidIfNeeded } from './navidromeReid/runNavidromeReid';
-import { shouldBlockLibraryWrites } from './navidromeReid/reidMarker';
+import { isLegacyThisSession, reidVerdict, shouldBlockLibraryWrites } from './navidromeReid/reidMarker';
 import { serverInfoStore } from '../store/serverInfoStore';
 import { syncStatusStore, type SyncScope } from '../store/syncStatusStore';
 import { fireAndForget } from '../utils/fireAndForget';
@@ -261,22 +261,20 @@ async function startupOrResumeFlow(throttled = false): Promise<void> {
 
 async function resumeFlowBody(): Promise<void> {
   // Settle the Navidrome re-key question BEFORE anything fetches. The probe is a no-op
-  // once the splash has run it; it does real work only on an online-resume, which is the
-  // path that can discover an upgraded server mid-session. Awaiting rather than
-  // early-returning on a blocked verdict matters: nothing re-triggers this flow, so a
-  // bare `return` while the answer was still pending would cost the session its sync.
+  // once the server has answered this session; it does real work when the launch could
+  // not reach the server and this flow runs again once it can. Awaiting rather than
+  // early-returning on a blocked verdict matters: a bare `return` while the answer was
+  // still pending would cost the session its sync.
   await (probeServerVersion() ?? Promise.resolve());
-  if (shouldBlockLibraryWrites()) {
+  // An undetermined server version shows its prompt here as well as at the splash, so a
+  // login or a launch that could not reach the server still gets it.
+  const askPending = reidVerdict() === 'ask' && !isLegacyThisSession();
+  if (shouldBlockLibraryWrites() || askPending) {
     // The ids this fan-out would write do not match the ones the rest of the install
-    // holds. Writing both is what doubles the library.
-    //
-    // Refusing is not enough on its own. This is the ONLY path that re-probes, and the
-    // pass is otherwise reachable only from the splash — so a user who launches in
-    // offline mode and then turns it off would land here, be refused, and sit online
-    // with no sync, no interstitial and no banner until they relaunched. Offer the pass
-    // instead: the gate renders mid-session, and startup resumes when it finishes.
-    logLibrarySync('[reid] startup fan-out refused — re-key outstanding; offering the pass');
-    void runNavidromeReidIfNeeded({ midSession: true });
+    // holds. Writing both is what doubles the library. Run the pass (or show the prompt)
+    // instead: the gate renders over the live app, and startup resumes when it finishes.
+    logLibrarySync('[reid] startup fan-out held — re-key outstanding or version undetermined');
+    void runNavidromeReidIfNeeded();
     return;
   }
 
