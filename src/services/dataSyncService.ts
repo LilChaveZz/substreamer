@@ -11,6 +11,7 @@
 import { albumListsStore } from '../store/albumListsStore';
 import { favoritesStore } from '../store/favoritesStore';
 import { genreStore } from '../store/genreStore';
+import { authStore } from '../store/authStore';
 import { offlineModeStore } from '../store/offlineModeStore';
 import { getDb } from '../store/persistence/db';
 import { albumIdsPresent, countAlbums, listAlbumIds, upsertAlbums } from '../db/repository/albums';
@@ -25,7 +26,13 @@ import { refreshDownloadedMetadata } from './downloadedMetadataService';
 import { logLibrarySync } from './librarySyncLogger';
 import { probeServerVersion } from './navidromeReid/reidProbe';
 import { runNavidromeReidIfNeeded } from './navidromeReid/runNavidromeReid';
-import { isLegacyThisSession, reidVerdict, shouldBlockLibraryWrites } from './navidromeReid/reidMarker';
+import {
+  hasServerAnswered,
+  isLegacyThisSession,
+  reidVerdict,
+  shouldBlockLibraryWrites,
+} from './navidromeReid/reidMarker';
+import { setServerUpHook } from './connectivityService';
 import { serverInfoStore } from '../store/serverInfoStore';
 import { syncStatusStore, type SyncScope } from '../store/syncStatusStore';
 import { fireAndForget } from '../utils/fireAndForget';
@@ -246,7 +253,23 @@ let resumeInFlight: Promise<void> | null = null;
 let lastResumeAt = 0;
 const RESUME_MIN_INTERVAL_MS = 30_000;
 
+/**
+ * A ping succeeded. If both of this session's server checks timed out (a VPN still
+ * connecting, a container restarting), library writes are still blocked and nothing else
+ * would ask again until the server first drops and comes back. Run the resume flow, which
+ * checks again. Does nothing once the server has answered, and nothing for any install
+ * whose writes are not blocked.
+ */
+function onServerUp(): void {
+  if (!authStore.getState().isLoggedIn) return;
+  if (offlineModeStore.getState().offlineMode) return;
+  if (hasServerAnswered() || !shouldBlockLibraryWrites()) return;
+  void onOnlineResume();
+}
+
 async function startupOrResumeFlow(throttled = false): Promise<void> {
+  // Idempotent. Here so a launch in offline mode, which never calls `onStartup`, has it too.
+  setServerUpHook(onServerUp);
   // De-duplication always: two callers racing must not run the fan-out twice.
   if (resumeInFlight) return resumeInFlight;
   // Throttling only for the caller that can repeat on its own. Startup and the

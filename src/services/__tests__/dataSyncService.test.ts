@@ -185,10 +185,22 @@ jest.mock('../../utils/stringHelpers', () => {
 
 let mockVerdict = 'skip';
 let mockLegacy = false;
-jest.mock('../navidromeReid/reidMarker', () => ({
-  ...jest.requireActual('../navidromeReid/reidMarker'),
-  reidVerdict: () => mockVerdict,
-  isLegacyThisSession: () => mockLegacy,
+let mockWritesBlocked: boolean | null = null;
+let mockAnswered: boolean | null = null;
+jest.mock('../navidromeReid/reidMarker', () => {
+  const actual = jest.requireActual('../navidromeReid/reidMarker');
+  return {
+    ...actual,
+    reidVerdict: () => mockVerdict,
+    isLegacyThisSession: () => mockLegacy,
+    shouldBlockLibraryWrites: () => mockWritesBlocked ?? actual.shouldBlockLibraryWrites(),
+    hasServerAnswered: () => mockAnswered ?? actual.hasServerAnswered(),
+  };
+});
+let mockServerUpHook: (() => unknown) | null = null;
+jest.mock('../connectivityService', () => ({
+  ...jest.requireActual('../connectivityService'),
+  setServerUpHook: (hook: (() => unknown) | null) => { mockServerUpHook = hook; },
 }));
 const mockRunReid = jest.fn(() => Promise.resolve());
 jest.mock('../navidromeReid/runNavidromeReid', () => ({
@@ -1004,3 +1016,57 @@ describe('pausing a running sync', () => {
   });
 });
 
+describe('a ping after both launch checks timed out', () => {
+  // Nothing else asks the server again until it first drops and comes back, so without
+  // this a VPN still connecting at launch left every library write blocked all session.
+  beforeEach(async () => {
+    mockServerUpHook = null;
+    authStore.setState({ isLoggedIn: true });
+    offlineState.offline = false;
+    await onStartup();
+    mockRunReid.mockClear();
+    mockWritesBlocked = true;
+    mockAnswered = false;
+  });
+  afterEach(() => {
+    mockWritesBlocked = null;
+    mockAnswered = null;
+  });
+
+  it('runs the resume flow, which checks the server again', async () => {
+    mockServerUpHook!();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(mockRunReid).toHaveBeenCalled();
+  });
+
+  it('does nothing once the server has answered', async () => {
+    mockAnswered = true;
+    mockServerUpHook!();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(mockRunReid).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when writes are not blocked (every other install)', async () => {
+    mockWritesBlocked = false;
+    mockServerUpHook!();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(mockRunReid).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when logged out or in offline mode', async () => {
+    authStore.setState({ isLoggedIn: false });
+    mockServerUpHook!();
+    authStore.setState({ isLoggedIn: true });
+    offlineState.offline = true;
+    mockServerUpHook!();
+    offlineState.offline = false;
+    await new Promise((r) => setTimeout(r, 0));
+    expect(mockRunReid).not.toHaveBeenCalled();
+  });
+
+  it('is registered on a launch that started in offline mode', async () => {
+    mockServerUpHook = null;
+    await onOnlineResume();
+    expect(mockServerUpHook).not.toBeNull();
+  });
+});

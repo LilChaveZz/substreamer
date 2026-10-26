@@ -19,9 +19,15 @@ import { getApiUnchecked } from './subsonicService';
  */
 type ConnectivityHook = () => unknown;
 let onServerDownHook: ConnectivityHook | null = null;
+let onServerUpHook: ConnectivityHook | null = null;
 
 export function setServerDownHook(hook: ConnectivityHook | null): void {
   onServerDownHook = hook;
+}
+
+/** Called after every successful ping, once the store records the server as reachable. */
+export function setServerUpHook(hook: ConnectivityHook | null): void {
+  onServerUpHook = hook;
 }
 
 function invokeHook(hook: ConnectivityHook | null, tag: string): void {
@@ -44,7 +50,8 @@ function invokeHook(hook: ConnectivityHook | null, tag: string): void {
 // radio warm (battery); 60s is plenty for the idle backstop.
 const PING_INTERVAL_REACHABLE_MS = 60_000;
 const PING_INTERVAL_UNREACHABLE_MS = 5_000;
-const PING_TIMEOUT_MS = 5_000;
+/** The one time limit for a server ping, shared by every caller that pings. */
+export const PING_TIMEOUT_MS = 5_000;
 const RECONNECTED_DISPLAY_MS = 2_500;
 
 /**
@@ -205,6 +212,7 @@ function handleServerResult(reachable: boolean): void {
         connectivityStore.getState().setBannerState('hidden');
       }, RECONNECTED_DISPLAY_MS);
     }
+    invokeHook(onServerUpHook, 'serverUp');
   } else {
     consecutiveFailures += 1;
     // Debounce: a single failed ping doesn't flip state or surface the

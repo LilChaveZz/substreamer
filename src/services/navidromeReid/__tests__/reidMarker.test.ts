@@ -49,6 +49,7 @@ import {
   isReidComplete,
   isReidRequired,
   hasContinuedAfterFailureThisSession,
+  hasServerAnswered,
   isLegacyThisSession,
   reidVerdict,
   resetReidSessionLatches,
@@ -369,6 +370,21 @@ describe('a timed-out probe stays retryable', () => {
     await (second ?? Promise.resolve());
 
     expect(reidVerdict()).toBe('run');
+  });
+
+  it('answers a server that takes 4.5s, which the heartbeat counts as reachable', async () => {
+    // One time limit for every ping: a server the heartbeat accepts is never one the
+    // probe gives up on.
+    jest.useFakeTimers();
+    try {
+      mockPingDelayMs = 4_500;
+      const probe = probeServerVersion();
+      await jest.advanceTimersByTimeAsync(4_600);
+      await probe;
+      expect(hasServerAnswered()).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('stops probing once the server has actually answered', async () => {
