@@ -230,8 +230,8 @@ export async function wipeServerData(): Promise<void> {
 }
 
 export async function resetAllStores(): Promise<void> {
-  // (Native SSL trust + proxy teardown happens in the logout handler, awaited
-  // before this runs — see AccountCard.handleLogout.)
+  // (Native SSL trust + proxy teardown happens before this runs — see
+  // logoutService.finishLogout.)
 
   // 0. Stop the library sync without waiting for it: a fetch can hang (OkHttp has no
   // timeouts). The bump makes every later write of a running sync a no-op, and the
@@ -248,15 +248,13 @@ export async function resetAllStores(): Promise<void> {
   // cannot clear them.
   resetFavoritesSyncFlags();
 
-  // 1. Reset the sync state first and get it on disk. A kill later in logout then
-  // leaves the user logged in over a sync that starts from zero, never one resuming
-  // from a cursor over a wiped library.
+  // 1. Reset the sync state first and get it on disk. A logout killed later is finished
+  // at the next launch, and must never find a cursor over a wiped library.
   syncStatusStore.getState().resetLibrarySync();
   syncStatusStore.getState().resetSongSync();
   await awaitDbWritesIdle();
 
-  // 2. The data. Credentials are still in place, so an interrupted logout leaves a
-  // logged-in install the user can log out of again.
+  // 2. The data. An interrupted logout is finished at the next launch (logoutPending).
   await wipeServerData();
 
   // 3. Last, the KV store and the in-memory state, auth included.
