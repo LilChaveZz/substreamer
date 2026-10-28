@@ -182,6 +182,22 @@ describe('jamPlayerBridge', () => {
     }));
   });
 
+  it('does not publish the previous track position after a native track change', async () => {
+    startJamPlayerBridge();
+    jamStore.getState().setState({ status: 'active' });
+    playerStore.getState().setProgress(295.548, 300, 300);
+    await jest.advanceTimersByTimeAsync(10_000);
+
+    playerStore.getState().setCurrentTrack(song('song-2'), 1);
+    await jest.advanceTimersByTimeAsync(400);
+
+    expect(mockSendJamTransport).toHaveBeenCalledWith(expect.objectContaining({
+      trackId: 'song-2',
+      positionMs: expect.any(Number),
+    }));
+    expect(mockSendJamTransport.mock.calls[0][0].positionMs).toBeLessThan(1000);
+  });
+
   it('applies a remote track change at its clock-adjusted position', async () => {
     startJamPlayerBridge();
     jamStore.getState().setState({

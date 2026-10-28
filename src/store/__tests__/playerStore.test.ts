@@ -33,11 +33,40 @@ describe('playerStore', () => {
     expect(playerStore.getState().currentTrackIndex).toBeNull();
   });
 
+  it('resets progress when the current track changes', () => {
+    playerStore.setState({ position: 299, duration: 300, bufferedPosition: 300 });
+    playerStore.getState().setCurrentTrack({ ...mockTrack, id: 't2', duration: 240 }, 1);
+
+    expect(playerStore.getState()).toMatchObject({
+      position: 0,
+      duration: 240,
+      bufferedPosition: 0,
+    });
+  });
+
+  it('preserves progress when the current track ID is unchanged', () => {
+    playerStore.getState().setCurrentTrack(mockTrack, 0);
+    playerStore.setState({ position: 75, duration: 300, bufferedPosition: 90 });
+    playerStore.getState().setCurrentTrack({ ...mockTrack, title: 'Updated title' }, 0);
+
+    expect(playerStore.getState()).toMatchObject({
+      position: 75,
+      duration: 300,
+      bufferedPosition: 90,
+    });
+  });
+
   it('setCurrentTrack to null clears track', () => {
+    playerStore.setState({ position: 75, duration: 300, bufferedPosition: 90 });
     playerStore.getState().setCurrentTrack(mockTrack, 0);
     playerStore.getState().setCurrentTrack(null);
     expect(playerStore.getState().currentTrack).toBeNull();
     expect(playerStore.getState().currentTrackIndex).toBeNull();
+    expect(playerStore.getState()).toMatchObject({
+      position: 0,
+      duration: 0,
+      bufferedPosition: 0,
+    });
   });
 
   it('setPlaybackState updates state', () => {

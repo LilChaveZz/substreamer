@@ -613,10 +613,8 @@ export async function applyJamPlayback(
   await awaitHydration();
   if (queue.length === 0) throw new Error('Nova-Jam queue is empty');
 
-  playerStore.getState().setQueueLoading(true);
+  if (!preserveCurrentTrack) playerStore.getState().setQueueLoading(true);
   try {
-    await waitForTrackMapsReady();
-    await ensureCoverArtAuth();
     const activeTrackId = playerStore.getState().currentTrack?.id;
 
     if (preserveCurrentTrack) {
@@ -624,30 +622,40 @@ export async function applyJamPlayback(
         throw new Error('Playback changed while applying the Nova-Jam queue');
       }
 
-      const { rnTracks, filteredQueue } = await buildPlayableQueue(queue.slice(1));
-      if (filteredQueue.length !== queue.length - 1) {
-        throw new Error('A Nova-Jam queue track is not available for playback');
-      }
-
       const activeIndex = playerStore.getState().currentTrackIndex ?? 0;
-      const queueEnd = currentChildQueue.length;
-      const removeIndices = Array.from(
-        { length: Math.max(0, queueEnd - activeIndex - 1) },
-        (_, index) => activeIndex + index + 1,
-      );
-      if (removeIndices.length > 0) await tp.removeFromQueue(removeIndices);
-      if (rnTracks.length > 0) await tp.addToQueue(rnTracks, activeIndex + 1);
+      const currentQueueMatches = currentChildQueue[activeIndex]?.id === activeTrackId
+        && currentChildQueue.length - activeIndex === queue.length
+        && queue.every((child, index) => currentChildQueue[activeIndex + index]?.id === child.id);
 
-      currentChildQueue = [
-        ...currentChildQueue.slice(0, activeIndex + 1),
-        ...filteredQueue,
-      ];
-      playerStore.getState().setQueue(currentChildQueue);
-      const formats: Record<string, EffectiveFormat> = {};
-      for (const child of currentChildQueue) formats[child.id] = stampQueueFormat(child);
-      playerStore.getState().setQueueFormats(formats);
-      persistQueue(currentChildQueue, activeIndex);
+      if (!currentQueueMatches) {
+        await waitForTrackMapsReady();
+        await ensureCoverArtAuth();
+        const { rnTracks, filteredQueue } = await buildPlayableQueue(queue.slice(1));
+        if (filteredQueue.length !== queue.length - 1) {
+          throw new Error('A Nova-Jam queue track is not available for playback');
+        }
+
+        const queueEnd = currentChildQueue.length;
+        const removeIndices = Array.from(
+          { length: Math.max(0, queueEnd - activeIndex - 1) },
+          (_, index) => activeIndex + index + 1,
+        );
+        if (removeIndices.length > 0) await tp.removeFromQueue(removeIndices);
+        if (rnTracks.length > 0) await tp.addToQueue(rnTracks, activeIndex + 1);
+
+        currentChildQueue = [
+          ...currentChildQueue.slice(0, activeIndex + 1),
+          ...filteredQueue,
+        ];
+        playerStore.getState().setQueue(currentChildQueue);
+        const formats: Record<string, EffectiveFormat> = {};
+        for (const child of currentChildQueue) formats[child.id] = stampQueueFormat(child);
+        playerStore.getState().setQueueFormats(formats);
+        persistQueue(currentChildQueue, activeIndex);
+      }
     } else {
+      await waitForTrackMapsReady();
+      await ensureCoverArtAuth();
       const { rnTracks, filteredQueue } = await buildPlayableQueue(queue);
       if (filteredQueue.length !== queue.length) {
         throw new Error('A Nova-Jam queue track is not available for playback');
@@ -687,7 +695,7 @@ export async function applyJamPlayback(
       if (!playing && nativeState !== 'paused') await tp.pause();
     }
   } finally {
-    playerStore.getState().setQueueLoading(false);
+    if (!preserveCurrentTrack) playerStore.getState().setQueueLoading(false);
   }
 }
 

@@ -234,6 +234,38 @@ describe('initPlayer', () => {
 });
 
 describe('applyJamPlayback', () => {
+  it('does not reload or mutate an unchanged queue tail', async () => {
+    const active = makeChild('active');
+    const previous = makeChild('previous');
+    const tail = [makeChild('next'), makeChild('last')];
+    await playTrack(active, [previous, active, ...tail]);
+    mockTP.setQueue.mockClear();
+    mockTP.removeFromQueue.mockClear();
+    mockTP.addToQueue.mockClear();
+    mockSetQueue.mockClear();
+    mockSetQueueFormats.mockClear();
+    mockSetQueueLoading.mockClear();
+    mockPersistQueue.mockClear();
+
+    const state = (require('../../store/playerStore').playerStore.getState as jest.Mock)();
+    state.currentTrack = active;
+    state.currentTrackIndex = 1;
+    state.queue = [previous, active, ...tail];
+
+    mockTP.getState.mockReturnValue('playing');
+    await applyJamPlayback([active, ...tail], 12, false, true, true);
+
+    expect(mockTP.removeFromQueue).not.toHaveBeenCalled();
+    expect(mockTP.addToQueue).not.toHaveBeenCalled();
+    expect(mockTP.setQueue).not.toHaveBeenCalled();
+    expect(mockSetQueue).not.toHaveBeenCalled();
+    expect(mockSetQueueFormats).not.toHaveBeenCalled();
+    expect(mockSetQueueLoading).not.toHaveBeenCalled();
+    expect(mockPersistQueue).not.toHaveBeenCalled();
+    expect(mockTP.seekTo).toHaveBeenCalledWith(12);
+    expect(mockTP.pause).toHaveBeenCalled();
+  });
+
   it('replaces only the queue tail for a queue-only room update', async () => {
     const active = makeChild('active');
     const oldTail = [makeChild('old-1'), makeChild('old-2')];
@@ -241,6 +273,7 @@ describe('applyJamPlayback', () => {
     mockTP.setQueue.mockClear();
     mockTP.removeFromQueue.mockClear();
     mockTP.addToQueue.mockClear();
+    mockSetQueueLoading.mockClear();
 
     const state = (require('../../store/playerStore').playerStore.getState as jest.Mock)();
     state.currentTrack = active;
@@ -257,6 +290,7 @@ describe('applyJamPlayback', () => {
       1,
     );
     expect(mockTP.setQueue).not.toHaveBeenCalled();
+    expect(mockSetQueueLoading).not.toHaveBeenCalled();
   });
 
   it('loads and seeks to the authoritative track for a track change', async () => {
@@ -278,6 +312,7 @@ describe('applyJamPlayback', () => {
     );
     expect(mockTP.seekTo).toHaveBeenCalledWith(12);
     expect(mockTP.play).toHaveBeenCalled();
+    expect(mockSetQueueLoading.mock.calls).toEqual([[true], [false]]);
   });
 
   it('rejects a room queue when Substreamer cannot build every requested track', async () => {

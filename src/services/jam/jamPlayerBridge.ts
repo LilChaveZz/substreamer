@@ -65,9 +65,14 @@ export function startJamPlayerBridge(): void {
   started = true;
   lastSignature = playerSignature(playerStore.getState());
   playerUnsubscribe = playerStore.subscribe((state, previous) => {
+    if (
+      state.position !== previous.position
+      || state.currentTrack?.id !== previous.currentTrack?.id
+    ) {
+      progressUpdatedAt = Date.now();
+    }
     const signature = playerSignature(state);
     if (signature === lastSignature) {
-      if (state.position !== previous.position) progressUpdatedAt = Date.now();
       return;
     }
     lastSignature = signature;

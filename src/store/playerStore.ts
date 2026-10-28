@@ -75,11 +75,18 @@ export const playerStore = create<PlayerState>()((set) => ({
   trackSource: null,
 
   setCurrentTrack: (track, index) =>
-    set({
+    set((state) => ({
       currentTrack: track,
       currentTrackIndex: index ?? null,
+      ...(state.currentTrack?.id !== track?.id
+        ? {
+            position: 0,
+            duration: track?.duration ?? 0,
+            bufferedPosition: 0,
+          }
+        : {}),
       ...(track ? {} : { trackSource: null }),
-    }),
+    })),
   setPlaybackState: (playbackState) => set({ playbackState }),
   setQueue: (queue) => set({ queue }),
   setProgress: (position, duration, buffered) =>
