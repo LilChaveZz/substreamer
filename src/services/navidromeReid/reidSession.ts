@@ -19,6 +19,7 @@ import {
   markServerAnswered,
   resetReidProbeState,
   resetReidSessionLatches,
+  setLegacyThisSession,
   setProbedVersion,
   setReidState,
 } from './reidMarker';
@@ -69,7 +70,11 @@ export async function beginReidSession({
       if (await installHoldsServerIds(db)) return;
     }
 
-    if (navidromeReidVerdict(serverType, serverVersion) === 'run') setReidState('complete');
+    const verdict = navidromeReidVerdict(serverType, serverVersion);
+    if (verdict === 'run') setReidState('complete');
+    // Nothing held, so nothing to convert: this session takes the server's ids as given.
+    // An undetermined version is asked about on the next launch, which has data.
+    else if (verdict === 'ask') setLegacyThisSession();
   } catch (e) {
     // The session still starts; the startup check makes the decision instead.
     // eslint-disable-next-line no-console

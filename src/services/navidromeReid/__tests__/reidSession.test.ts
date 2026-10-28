@@ -83,11 +83,21 @@ describe('beginReidSession', () => {
     expect(shouldBlockLibraryWrites()).toBe(false);
   });
 
-  it('does not stamp an undetermined version, which gets the prompt instead', async () => {
+  it('takes an undetermined version as given on an empty install: no prompt, no stamp', async () => {
     await beginReidSession({ serverType: 'navidrome', serverVersion: 'dev' });
 
     expect(isReidComplete()).toBe(false);
     expect(reidVerdict()).toBe('ask');
+    expect(isLegacyThisSession()).toBe(true);
+  });
+
+  it('leaves an undetermined version to the prompt when leftovers survive the wipe', async () => {
+    mockDb().runSync("INSERT INTO albums (id, name, sort_title) VALUES ('old', 'Old', 'old')");
+    mockWipe.mockImplementationOnce(async () => undefined);
+
+    await beginReidSession({ serverType: 'navidrome', serverVersion: 'dev' });
+
+    expect(isLegacyThisSession()).toBe(false);
   });
 
   it('leaves a non-Navidrome server alone', async () => {
