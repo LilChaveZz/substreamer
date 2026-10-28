@@ -744,6 +744,20 @@ export async function getArtist(id: string): Promise<ArtistWithAlbumsID3 | null>
   return response.artist ?? null;
 }
 
+/** Fetch a single song by ID for integrations that receive server track IDs. */
+export async function getSongById(id: string): Promise<Child | null> {
+  const api = getApi();
+  if (!api) return null;
+  try {
+    const response = await api.getSong({ id });
+    throwIfSubsonicFailure(response, 'getSong');
+    return response.song ?? null;
+  } catch {
+    // The Jam bridge reports an unresolved ID as an explicit playback error.
+    return null;
+  }
+}
+
 /**
  * Fetch additional info for an artist (biography, similar artists, images).
  * Returns null gracefully if the server does not support this endpoint.

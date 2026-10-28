@@ -2,7 +2,7 @@ import Ionicons from "@react-native-vector-icons/ionicons/static";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
@@ -14,6 +14,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { skipToNext, togglePlayPause } from '@/services/playerService';
 import { playbackSettingsStore } from '@/store/playbackSettingsStore';
 import { playerStore } from '@/store/playerStore';
+import { jamStore } from '@/store/jamStore';
 
 import { absoluteFill } from '@/utils/styles';
 const MINI_PLAYER_HEIGHT = 56;
@@ -33,6 +34,8 @@ export function PlayerPhoneMini() {
   const currentTrackIndex = playerStore((s) => s.currentTrackIndex);
   const queue = playerStore((s) => s.queue);
   const repeatMode = playbackSettingsStore((s) => s.repeatMode);
+  const jamStatus = jamStore((s) => s.status);
+  const jamMemberCount = jamStore((s) => s.members.length);
 
   // Rendered synchronously from the store each re-render — same contract as
   // PlayerProgressBar so the two surfaces can never visually diverge.
@@ -136,11 +139,25 @@ export function PlayerPhoneMini() {
           <MarqueeText style={marqueeStyle}>
             {queueLoading ? t('loading') : currentTrack.title}
           </MarqueeText>
-          {!queueLoading && (
+          {!queueLoading && Platform.OS === 'android' && jamStatus === 'active' ? (
+            <View style={styles.jamStatus}>
+              <Ionicons name="people" size={12} color={colors.primary} />
+              <Text style={[styles.artist, { color: colors.primary }]} numberOfLines={1}>
+                {t('jamActiveIndicator', { count: jamMemberCount })}
+              </Text>
+            </View>
+          ) : !queueLoading && Platform.OS === 'android' && jamStatus === 'reconnecting' ? (
+            <View style={styles.jamStatus}>
+              <Ionicons name="people-outline" size={12} color={colors.textSecondary} />
+              <Text style={[styles.artist, { color: colors.textSecondary }]} numberOfLines={1}>
+                {t('jamReconnectingIndicator')}
+              </Text>
+            </View>
+          ) : !queueLoading ? (
             <Text style={[styles.artist, { color: colors.textSecondary }]} numberOfLines={1}>
               {currentTrack.artist ?? t('unknownArtist')}
             </Text>
-          )}
+          ) : null}
         </View>
       </Pressable>
 
@@ -227,6 +244,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     marginTop: 1,
+  },
+  jamStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   coverPlaceholder: {
     alignItems: 'center',

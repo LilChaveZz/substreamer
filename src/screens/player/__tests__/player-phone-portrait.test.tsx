@@ -40,6 +40,8 @@ jest.mock('@/hooks/useThemedAlert', () => ({
   }),
 }));
 
+const mockSetPlayerNavigationOptions = jest.fn();
+const mockPlayerRouterPush = jest.fn();
 jest.mock('expo-router', () => ({
   Stack: {
     Toolbar: Object.assign(
@@ -49,8 +51,8 @@ jest.mock('expo-router', () => ({
       },
     ),
   },
-  useNavigation: () => ({ setOptions: jest.fn() }),
-  useRouter: () => ({ back: jest.fn() }),
+  useNavigation: () => ({ setOptions: (...args: unknown[]) => mockSetPlayerNavigationOptions(...args) }),
+  useRouter: () => ({ back: jest.fn(), push: (...args: unknown[]) => mockPlayerRouterPush(...args) }),
 }));
 
 jest.mock('expo-linear-gradient', () => {
@@ -248,6 +250,7 @@ jest.mock('@shopify/flash-list', () => {
 
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 
 import { appStateStore } from '@/store/appStateStore';
 import { lyricsStore } from '@/store/lyricsStore';
@@ -294,6 +297,26 @@ beforeEach(() => {
 });
 
 describe('PlayerPhonePortrait', () => {
+  it('opens Jam from the Android full-player header', () => {
+    const platformDescriptor = Object.getOwnPropertyDescriptor(Platform, 'OS');
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'android' });
+    mockSetPlayerNavigationOptions.mockClear();
+    mockPlayerRouterPush.mockClear();
+
+    try {
+      render(<PlayerPhonePortrait />);
+      const options = mockSetPlayerNavigationOptions.mock.calls.at(-1)?.[0] as {
+        headerRight: () => React.ReactElement;
+      };
+      const header = render(options.headerRight());
+      fireEvent.press(header.getByLabelText('Listen Together'));
+
+      expect(mockPlayerRouterPush).toHaveBeenCalledWith('/jam');
+    } finally {
+      if (platformDescriptor) Object.defineProperty(Platform, 'OS', platformDescriptor);
+    }
+  });
+
   it('renders empty state when no current track', () => {
     playerStore.setState({ currentTrack: null });
     const { getByText } = render(<PlayerPhonePortrait />);

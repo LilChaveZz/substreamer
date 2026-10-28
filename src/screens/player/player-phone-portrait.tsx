@@ -216,7 +216,26 @@ export function PlayerPhonePortrait() {
         </GHPressable>
       ),
       headerRight: () =>
-        currentTrack ? (
+        Platform.OS === 'android' ? (
+          <View style={styles.headerActions}>
+            <GHPressable
+              accessibilityRole="button"
+              accessibilityLabel={t('jamListening')}
+              onPress={() => router.push('/jam')}
+              hitSlop={10}
+            >
+              <Ionicons name="people-outline" size={22} color={colors.textPrimary} />
+            </GHPressable>
+            {currentTrack ? (
+              <MoreOptionsButton
+                onPress={() =>
+                  moreOptionsStore.getState().show({ type: 'song', item: currentTrack }, 'player-phone-portrait')
+                }
+                color={colors.textPrimary}
+              />
+            ) : null}
+          </View>
+        ) : currentTrack ? (
           <MoreOptionsButton
             onPress={() =>
               moreOptionsStore.getState().show({ type: 'song', item: currentTrack }, 'player-phone-portrait')
@@ -225,7 +244,7 @@ export function PlayerPhonePortrait() {
           />
         ) : null,
     });
-  }, [currentTrack, navigation, onClose, colors.textPrimary]);
+  }, [currentTrack, navigation, onClose, colors.textPrimary, router, t]);
 
   const onClearConfirmed = useCallback(() => {
     onClose();
@@ -852,6 +871,11 @@ const LyricsTab = memo(function LyricsTab({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
   },
   contentArea: {
     flex: 1,

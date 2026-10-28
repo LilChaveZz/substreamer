@@ -90,6 +90,8 @@ import { initNetInfoConfig } from '../services/netInfoConfig';
 import { startMonitoring, stopMonitoring } from '../services/connectivityService';
 import { initFailover } from '../services/failoverService';
 import { initScrobbleService } from '../services/scrobbleService';
+import { startJamService, stopJamService } from '../services/jam/jamService';
+import { startJamPlayerBridge, stopJamPlayerBridge } from '../services/jam/jamPlayerBridge';
 import { initSslTrustStore, syncProxyUpstreams, trustCertificateForHost } from '../services/sslTrustService';
 import { runAutoBackupIfNeeded } from '../services/backupService';
 import { startAutoOffline, stopAutoOffline } from '../services/autoOfflineService';
@@ -502,6 +504,16 @@ export default function RootLayout() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!rehydrated || !isLoggedIn || Platform.OS !== 'android') return;
+    startJamService();
+    startJamPlayerBridge();
+    return () => {
+      stopJamPlayerBridge();
+      stopJamService();
+    };
+  }, [rehydrated, isLoggedIn]);
+
   // --- Initialise audio player & pre-fetch server data when logged in ---
   useEffect(() => {
     if (!rehydrated || !isLoggedIn) return;
@@ -810,6 +822,16 @@ export default function RootLayout() {
             animation: 'slide_from_bottom',
             gestureDirection: 'vertical',
             headerBackVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name="jam"
+          options={{
+            ...blurHeaderOptions,
+            title: i18n.t('jamListening'),
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+            headerBackTitle: i18n.t('back'),
           }}
         />
         <Stack.Screen

@@ -77,6 +77,7 @@ function maybePromptFireBackgroundPlayback(): void {
 let isPlayerReady = false;
 /** The Child[] backing the current native queue, indexed by position. */
 let currentChildQueue: Child[] = [];
+const userSeekListeners = new Set<(position: number) => void>();
 /** Maps trackId → playlistId for tracks that originated from a playlist. */
 const trackPlaylistMap = new Map<string, string>();
 /**
@@ -589,6 +590,105 @@ export async function seekTo(position: number): Promise<void> {
   await tp.seekTo(target);
   const store = playerStore.getState();
   store.setProgress(target, store.duration, store.bufferedPosition);
+  userSeekListeners.forEach((listener) => listener(target));
+}
+
+/** Subscribe to seek commands initiated outside remote playback synchronization. */
+export function subscribeToUserSeeks(listener: (position: number) => void): () => void {
+  userSeekListeners.add(listener);
+  return () => userSeekListeners.delete(listener);
+}
+
+/**
+ * Apply the authoritative Jam queue and transport through the same playable-queue
+ * builder used by normal Substreamer playback.
+ */
+export async function applyJamPlayback(
+  queue: Child[],
+  positionSec: number | undefined,
+  playing: boolean,
+  preserveCurrentTrack: boolean,
+  updateTransport = true,
+): Promise<void> {
+  await awaitHydration();
+  if (queue.length === 0) throw new Error('Nova-Jam queue is empty');
+
+  playerStore.getState().setQueueLoading(true);
+  try {
+    await waitForTrackMapsReady();
+    await ensureCoverArtAuth();
+    const activeTrackId = playerStore.getState().currentTrack?.id;
+
+    if (preserveCurrentTrack) {
+      if (!activeTrackId || queue[0]?.id !== activeTrackId) {
+        throw new Error('Playback changed while applying the Nova-Jam queue');
+      }
+
+      const { rnTracks, filteredQueue } = await buildPlayableQueue(queue.slice(1));
+      if (filteredQueue.length !== queue.length - 1) {
+        throw new Error('A Nova-Jam queue track is not available for playback');
+      }
+
+      const activeIndex = playerStore.getState().currentTrackIndex ?? 0;
+      const queueEnd = currentChildQueue.length;
+      const removeIndices = Array.from(
+        { length: Math.max(0, queueEnd - activeIndex - 1) },
+        (_, index) => activeIndex + index + 1,
+      );
+      if (removeIndices.length > 0) await tp.removeFromQueue(removeIndices);
+      if (rnTracks.length > 0) await tp.addToQueue(rnTracks, activeIndex + 1);
+
+      currentChildQueue = [
+        ...currentChildQueue.slice(0, activeIndex + 1),
+        ...filteredQueue,
+      ];
+      playerStore.getState().setQueue(currentChildQueue);
+      const formats: Record<string, EffectiveFormat> = {};
+      for (const child of currentChildQueue) formats[child.id] = stampQueueFormat(child);
+      playerStore.getState().setQueueFormats(formats);
+      persistQueue(currentChildQueue, activeIndex);
+    } else {
+      const { rnTracks, filteredQueue } = await buildPlayableQueue(queue);
+      if (filteredQueue.length !== queue.length) {
+        throw new Error('A Nova-Jam queue track is not available for playback');
+      }
+      const startTrackId = queue[0].id;
+      const startIndex = filteredQueue.findIndex((child) => child.id === startTrackId);
+      if (startIndex < 0) throw new Error('Nova-Jam current track is unavailable');
+
+      currentChildQueue = filteredQueue;
+      trackPlaylistMap.clear();
+      playerStore.getState().setQueue(filteredQueue);
+      const formats: Record<string, EffectiveFormat> = {};
+      for (const child of filteredQueue) formats[child.id] = stampQueueFormat(child);
+      playerStore.getState().setQueueFormats(formats);
+      await tp.setQueue(rnTracks, startIndex);
+      if (positionSec != null) {
+        await tp.seekTo(Math.max(0, positionSec));
+        playerStore.getState().setProgress(
+          Math.max(0, positionSec),
+          playerStore.getState().duration,
+          playerStore.getState().bufferedPosition,
+        );
+      }
+      persistQueue(filteredQueue, startIndex);
+    }
+
+    if (positionSec != null && preserveCurrentTrack) {
+      const position = Math.max(0, positionSec);
+      await tp.seekTo(position);
+      const state = playerStore.getState();
+      state.setProgress(position, state.duration, state.bufferedPosition);
+    }
+
+    if (updateTransport) {
+      const nativeState = tp.getState();
+      if (playing && nativeState !== 'playing') await tp.play();
+      if (!playing && nativeState !== 'paused') await tp.pause();
+    }
+  } finally {
+    playerStore.getState().setQueueLoading(false);
+  }
 }
 
 /** Skip to a specific track in the queue by index. */

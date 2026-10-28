@@ -992,6 +992,38 @@ describe('getArtist', () => {
   });
 });
 
+describe('getSongById', () => {
+  it('returns null when no API is available', async () => {
+    mockAuthStore.getState.mockReturnValue({ isLoggedIn: false } as any);
+    const { getSongById } = require('../subsonicService');
+    expect(await getSongById('song-1')).toBeNull();
+  });
+
+  it('returns the song from the active Subsonic account', async () => {
+    const { default: SubsonicAPI } = require('subsonic-api');
+    SubsonicAPI.prototype.getSong = jest.fn().mockResolvedValue({
+      song: { id: 'song-1', title: 'Track' },
+    });
+    const { getSongById, getApi } = require('../subsonicService');
+    getApi();
+
+    await expect(getSongById('song-1')).resolves.toEqual({
+      id: 'song-1',
+      title: 'Track',
+    });
+    expect(SubsonicAPI.prototype.getSong).toHaveBeenCalledWith({ id: 'song-1' });
+  });
+
+  it('returns null on API failure so Jam can report an unavailable track', async () => {
+    const { default: SubsonicAPI } = require('subsonic-api');
+    SubsonicAPI.prototype.getSong = jest.fn().mockRejectedValue(new Error('offline'));
+    const { getSongById, getApi } = require('../subsonicService');
+    getApi();
+
+    await expect(getSongById('song-1')).resolves.toBeNull();
+  });
+});
+
 describe('getArtistInfo2', () => {
   it('returns artist info on success', async () => {
     const { default: SubsonicAPI } = require('subsonic-api');

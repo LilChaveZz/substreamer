@@ -1,7 +1,7 @@
 import Ionicons from '@react-native-vector-icons/ionicons/static';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '../../hooks/useTheme';
@@ -156,6 +156,23 @@ export function AccountCard() {
               {shareRole === true ? t('yes') : shareRole === false ? t('no') : t('unknown')}
             </Text>
           </View>
+          {Platform.OS === 'android' ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/jam')}
+              style={({ pressed }) => [
+                styles.fieldRow,
+                { borderBottomColor: colors.border },
+                pressed && settingsStyles.pressed,
+              ]}
+            >
+              <Text style={[styles.fieldLabel, { color: colors.textPrimary }]}>{t('jamListening')}</Text>
+              <View style={styles.rightValue}>
+                <Ionicons name="people-outline" size={18} color={colors.textSecondary} />
+                <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+              </View>
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={() => setDeviceNameSheetVisible(true)}
             style={({ pressed }) => [

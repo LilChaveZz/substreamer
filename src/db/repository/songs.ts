@@ -356,6 +356,17 @@ export async function listSongs(
   return page;
 }
 
+/** Look up one song by server ID for playback and background integrations. */
+export async function getSongById(db: InternalDb, id: string): Promise<LibrarySong | null> {
+  const row = await db.getFirstAsync<SongListRow>(
+    `SELECT ${SONG_LIST_COLS} FROM songs WHERE id = ?`,
+    [id],
+  );
+  if (!row) return null;
+  await hydrateSongRows(db, [row]);
+  return songListRowToChild(row);
+}
+
 export async function listSongsBefore(
   db: InternalDb,
   opts: { before: Cursor; limit: number; sortOrder?: SongSortOrder },

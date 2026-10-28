@@ -145,17 +145,28 @@ export function PlayerTabletPortrait() {
           <Ionicons name="chevron-down" size={28} color={colors.textPrimary} />
         </GHPressable>
       ),
-      headerRight: () =>
-        currentTrack ? (
-          <MoreOptionsButton
-            onPress={() =>
-              moreOptionsStore.getState().show({ type: 'song', item: currentTrack }, 'player-tablet-portrait')
-            }
-            color={colors.textPrimary}
-          />
-        ) : null,
+      headerRight: () => (
+        <View style={styles.headerActions}>
+          <GHPressable
+            accessibilityRole="button"
+            accessibilityLabel={t('jamListening')}
+            onPress={() => router.push('/jam')}
+            hitSlop={10}
+          >
+            <Ionicons name="people-outline" size={22} color={colors.textPrimary} />
+          </GHPressable>
+          {currentTrack ? (
+            <MoreOptionsButton
+              onPress={() =>
+                moreOptionsStore.getState().show({ type: 'song', item: currentTrack }, 'player-tablet-portrait')
+              }
+              color={colors.textPrimary}
+            />
+          ) : null}
+        </View>
+      ),
     });
-  }, [currentTrack, navigation, onClose, colors.textPrimary]);
+  }, [currentTrack, navigation, onClose, colors.textPrimary, router, t]);
 
   const headerSpace = insets.top + HEADER_BAR_HEIGHT;
 
@@ -498,6 +509,11 @@ const PlaybackControls = memo(function PlaybackControls({
 /* ------------------------------------------------------------------ */
 
 const styles = StyleSheet.create({
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
   container: {
     flex: 1,
   },

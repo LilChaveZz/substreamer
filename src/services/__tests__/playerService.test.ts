@@ -116,6 +116,8 @@ import {
   skipToNext,
   skipToPrevious,
   seekTo,
+  subscribeToUserSeeks,
+  applyJamPlayback,
   skipToTrack,
   retryPlayback,
   clearQueue,
@@ -228,6 +230,78 @@ describe('initPlayer', () => {
   it('registered the RNQP player + emitter used by these tests', () => {
     expect(typeof mockTP.setQueue).toBe('function');
     expect(typeof emit).toBe('function');
+  });
+});
+
+describe('applyJamPlayback', () => {
+  it('replaces only the queue tail for a queue-only room update', async () => {
+    const active = makeChild('active');
+    const oldTail = [makeChild('old-1'), makeChild('old-2')];
+    await playTrack(active, [active, ...oldTail]);
+    mockTP.setQueue.mockClear();
+    mockTP.removeFromQueue.mockClear();
+    mockTP.addToQueue.mockClear();
+
+    const state = (require('../../store/playerStore').playerStore.getState as jest.Mock)();
+    state.currentTrack = active;
+    state.currentTrackIndex = 0;
+    state.queue = [active, ...oldTail];
+
+    await applyJamPlayback([active, makeChild('new-tail')], undefined, true, true, false);
+
+    expect(mockTP.removeFromQueue).toHaveBeenCalledTimes(1);
+    expect(mockTP.removeFromQueue).toHaveBeenCalledWith([1, 2]);
+    expect(mockTP.addToQueue).toHaveBeenCalledTimes(1);
+    expect(mockTP.addToQueue).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: 'new-tail' })],
+      1,
+    );
+    expect(mockTP.setQueue).not.toHaveBeenCalled();
+  });
+
+  it('loads and seeks to the authoritative track for a track change', async () => {
+    mockTP.getState.mockReturnValue('none');
+
+    await applyJamPlayback(
+      [makeChild('remote-current'), makeChild('remote-next')],
+      12,
+      true,
+      false,
+    );
+
+    expect(mockTP.setQueue).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'remote-current' }),
+        expect.objectContaining({ id: 'remote-next' }),
+      ]),
+      0,
+    );
+    expect(mockTP.seekTo).toHaveBeenCalledWith(12);
+    expect(mockTP.play).toHaveBeenCalled();
+  });
+
+  it('rejects a room queue when Substreamer cannot build every requested track', async () => {
+    mockOfflineMode.offlineMode = true;
+
+    await expect(
+      applyJamPlayback([makeChild('unavailable')], 0, false, false),
+    ).rejects.toThrow('A Nova-Jam queue track is not available for playback');
+
+    mockOfflineMode.offlineMode = false;
+  });
+});
+
+describe('user seek subscriptions', () => {
+  it('publishes a completed local seek and stops after unsubscribe', async () => {
+    const listener = jest.fn();
+    const unsubscribe = subscribeToUserSeeks(listener);
+
+    await seekTo(23);
+    expect(listener).toHaveBeenCalledWith(23);
+
+    unsubscribe();
+    await seekTo(48);
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -76,6 +76,17 @@
 
 Substreamer supports [AudioMuse-AI](https://github.com/NeptuneHub/AudioMuse-AI) for AI-powered playlist generation. When AudioMuse-AI is enabled on your server, the **"Play more like this"** option on any song and the **"Play similar artists"** option on any artist will leverage AudioMuse-AI's sonic analysis to deliver smarter, more relevant recommendations — all generated locally from your own library with no external APIs.
 
+### Nova-Jam
+
+Android users can join a Nova-Jam listening room from **Settings > Jam** or the
+player. Every room member needs an account on the same Navidrome instance
+configured for the sidecar. Members share playback and queue control while each
+device streams audio directly from that shared instance; the sidecar does not
+relay audio. Nova-Jam requires a separately deployed sidecar at the `/ws`
+endpoint on the saved server's host. Room codes are three alphanumeric
+characters; QR scanning is not included.
+See [NOVA-JAM.md](NOVA-JAM.md) for setup, behavior, and security details.
+
 ## Compatible Servers
 
 Substreamer works with any server implementing the [Subsonic API](http://www.subsonic.org/pages/api.jsp). Features are automatically adjusted based on what each server supports.
