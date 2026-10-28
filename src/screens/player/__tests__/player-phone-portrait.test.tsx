@@ -137,9 +137,28 @@ jest.mock('@/components/SkipIntervalButton', () => {
   return { SkipIntervalButton: () => <View testID="skip-interval" /> };
 });
 
-jest.mock('@/components/QueueItemRow', () => {
-  const { Text } = require('react-native');
-  return { QueueItemRow: ({ track }: { track: { title: string } }) => <Text>{track.title}</Text> };
+jest.mock('@/components/player/ReorderableQueueList', () => {
+  const { Pressable, Text, View } = require('react-native');
+  return {
+    ReorderableQueueList: ({
+      queue,
+      onPress,
+      ListHeaderComponent,
+    }: {
+      queue: { id: string; title: string }[];
+      onPress: (index: number) => void;
+      ListHeaderComponent?: React.ReactElement | null;
+    }) => (
+      <View>
+        {ListHeaderComponent}
+        {queue.map((track, index) => (
+          <Pressable key={`${track.id}-${index}`} onPress={() => onPress(index)}>
+            <Text>{track.title}</Text>
+          </Pressable>
+        ))}
+      </View>
+    ),
+  };
 });
 
 jest.mock('@/components/SwipeableRow', () => ({
@@ -220,33 +239,6 @@ jest.mock('@/utils/formatters', () => ({
 jest.mock('@/utils/stringHelpers', () => ({
   minDelay: () => Promise.resolve(),
 }));
-
-jest.mock('@shopify/flash-list', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-  return {
-    FlashList: React.forwardRef(function MockFlashList(
-      { data, renderItem, ListHeaderComponent, keyExtractor }: {
-        data: unknown[];
-        renderItem: (info: { item: unknown; index: number }) => React.ReactNode;
-        ListHeaderComponent?: React.ReactNode;
-        keyExtractor?: (item: unknown, index: number) => string;
-      },
-      _ref: unknown,
-    ) {
-      return (
-        <View testID="flash-list">
-          {ListHeaderComponent}
-          {data?.map((item: unknown, index: number) => (
-            <View key={keyExtractor ? keyExtractor(item, index) : String(index)}>
-              {renderItem({ item, index })}
-            </View>
-          ))}
-        </View>
-      );
-    }),
-  };
-});
 
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
@@ -331,7 +323,7 @@ describe('PlayerPhonePortrait', () => {
     expect(getByText('Test Artist')).toBeTruthy();
 
     // Queue items should NOT be visible (queue tab is not active)
-    // The FlashList is mounted but hidden via opacity
+    // The queue list is mounted but hidden via opacity
     // Tab bar should be visible with all icons
     expect(getByText('musical-notes')).toBeTruthy();
     expect(getByText('playlist-music')).toBeTruthy();

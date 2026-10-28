@@ -1,5 +1,4 @@
 import Ionicons from "@react-native-vector-icons/ionicons/static";
-import { FlashList } from '@shopify/flash-list';
 import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -7,8 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlbumInfoContent } from '@/components/AlbumInfoContent';
 import { LyricsContent } from '@/components/LyricsContent';
-import { QueueItemRow } from '@/components/QueueItemRow';
-import { closeOpenRow } from '@/components/SwipeableRow';
+import { ReorderableQueueList } from '@/components/player/ReorderableQueueList';
 import { type ThemeColors } from '@/constants/theme';
 import { usePlayerAlbumInfo } from '@/hooks/usePlayerAlbumInfo';
 import { usePlayerLyrics } from '@/hooks/usePlayerLyrics';
@@ -87,25 +85,6 @@ export const PlayerModeContent = memo(function PlayerModeContent({
     handleRetry: handleRetryLyrics,
   } = usePlayerLyrics(trackId, currentTrack.artist, currentTrack.title, true);
 
-  const renderQueueItem = useCallback(
-    ({ item, index }: { item: Child; index: number }) => (
-      <QueueItemRow
-        track={item}
-        index={index}
-        isActive={index === currentTrackIndex}
-        colors={queueColors}
-        onPress={onQueueItemPress}
-        onLongPress={onQueueItemLongPress}
-      />
-    ),
-    [currentTrackIndex, queueColors, onQueueItemPress, onQueueItemLongPress],
-  );
-
-  const keyExtractor = useCallback(
-    (item: Child, index: number) => `${item.id}-${index}`,
-    [],
-  );
-
   const listContentStyle = useMemo(
     () => ({ paddingBottom: insets.bottom + 16 }),
     [insets.bottom],
@@ -144,13 +123,12 @@ export const PlayerModeContent = memo(function PlayerModeContent({
               </View>
             </View>
           )}
-          <FlashList
-            data={queue}
-            renderItem={renderQueueItem}
-            keyExtractor={keyExtractor}
-            onScrollBeginDrag={closeOpenRow}
-            drawDistance={300}
-            showsVerticalScrollIndicator={false}
+          <ReorderableQueueList
+            queue={queue}
+            currentTrackIndex={currentTrackIndex}
+            colors={queueColors}
+            onPress={onQueueItemPress}
+            onLongPress={onQueueItemLongPress}
             contentContainerStyle={listContentStyle}
           />
         </>

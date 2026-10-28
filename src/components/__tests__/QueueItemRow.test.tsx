@@ -148,6 +148,24 @@ describe('QueueItemRow other actions', () => {
     expect(onLongPress).toHaveBeenCalledWith(track);
   });
 
+  it('keeps the reorder handle separate from row press and long-press actions', () => {
+    const onDragHandlePressIn = jest.fn();
+    const onDragHandlePressOut = jest.fn();
+    const { onPress, onLongPress } = renderRow({
+      onDragHandlePressIn,
+      onDragHandlePressOut,
+    });
+
+    const handle = screen.getByLabelText('Reorder queue item');
+    fireEvent(handle, 'pressIn');
+    fireEvent(handle, 'pressOut');
+
+    expect(onDragHandlePressIn).toHaveBeenCalledTimes(1);
+    expect(onDragHandlePressOut).toHaveBeenCalledTimes(1);
+    expect(onPress).not.toHaveBeenCalled();
+    expect(onLongPress).not.toHaveBeenCalled();
+  });
+
   it('renders title, artist and duration, and copes with no artist or duration', () => {
     mockStarred.value = true;
     renderRow();

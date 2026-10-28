@@ -38,7 +38,7 @@
 
 ## Highlights
 
-**Playback** — Background audio, lock screen controls, adjustable playback speed, shuffle and repeat modes, queue management.
+**Playback** — Background audio, lock screen controls, adjustable playback speed, shuffle and repeat modes plus reordering upcoming tracks in the play queue.
 
 **Offline Use** — Download albums and playlists for offline listening, background download queue with progress and automatic recovery, automatic offline mode (if you leave wifi or if you leave your home wifi network specifically), manual offline mode switch at any time, configurable storage limits and visibility of storage use, configurable download Quality.
 
@@ -82,7 +82,8 @@ Android users can join a Nova-Jam listening room from **Settings > Jam** or the
 player. Every room member needs an account on the same Navidrome instance
 configured for the sidecar. Members share playback and queue control while each
 device streams audio directly from that shared instance; the sidecar does not
-relay audio. Nova-Jam requires a separately deployed sidecar at the `/ws`
+relay audio. Reordering upcoming tracks is shared with the room without
+restarting the active track. Nova-Jam requires a separately deployed sidecar at the `/ws`
 endpoint on the saved server's host. Room codes are three alphanumeric
 characters; QR scanning is not included.
 See [NOVA-JAM.md](NOVA-JAM.md) for setup, behavior, and security details.

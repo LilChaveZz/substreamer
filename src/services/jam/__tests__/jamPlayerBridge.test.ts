@@ -132,12 +132,14 @@ describe('jamPlayerBridge', () => {
   it('updates a queue-only snapshot without seeking or changing transport', async () => {
     startJamPlayerBridge();
     jamStore.getState().setState({ status: 'active', rttMs: 20 });
-    jamStore.getState().setState({ snapshot: snapshot(1, ['song-1', 'song-2']) });
+    jamStore.getState().setState({
+      snapshot: snapshot(1, ['song-1', 'song-2', 'song-3']),
+    });
     await jest.advanceTimersByTimeAsync(700);
 
     jest.setSystemTime(1_000_100);
     jamStore.getState().setState({
-      snapshot: snapshot(2, ['song-1', 'song-3'], {
+      snapshot: snapshot(2, ['song-1', 'song-3', 'song-2'], {
         positionMs: 1100,
         serverTimeMs: Date.now(),
       }),
@@ -145,13 +147,43 @@ describe('jamPlayerBridge', () => {
     await flushPromises();
 
     expect(mockApplyJamPlayback).toHaveBeenLastCalledWith(
-      [song('song-1'), song('song-3')],
+      [song('song-1'), song('song-3'), song('song-2')],
       undefined,
       true,
       true,
       false,
     );
     expect(mockSendJamTransport).not.toHaveBeenCalled();
+    expect(playerStore.getState().currentTrack?.id).toBe('song-1');
+    expect(playerStore.getState().playbackState).toBe('playing');
+    expect(playerStore.getState().position).toBe(1);
+  });
+
+  it('publishes a local upcoming-track reorder without changing transport', async () => {
+    startJamPlayerBridge();
+    jamStore.getState().setState({ status: 'active', rttMs: 20 });
+    jamStore.getState().setState({
+      snapshot: snapshot(1, ['song-1', 'song-2', 'song-3']),
+    });
+    await jest.advanceTimersByTimeAsync(700);
+    mockSendJamTransport.mockClear();
+
+    playerStore.getState().setQueue([
+      song('song-1'),
+      song('song-3'),
+      song('song-2'),
+    ]);
+    await jest.advanceTimersByTimeAsync(400);
+
+    expect(mockSendJamTransport).toHaveBeenCalledWith(expect.objectContaining({
+      playing: true,
+      trackId: 'song-1',
+      queue: ['song-1', 'song-3', 'song-2'],
+      queueIndex: 0,
+    }));
+    expect(mockApplyJamPlayback).toHaveBeenCalledTimes(1);
+    expect(playerStore.getState().currentTrack?.id).toBe('song-1');
+    expect(playerStore.getState().playbackState).toBe('playing');
   });
 
   it('publishes settled local playback changes and debounced seeks only in an active room', async () => {

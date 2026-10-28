@@ -1,5 +1,4 @@
 import Ionicons from "@react-native-vector-icons/ionicons/static";
-import { FlashList } from '@shopify/flash-list';
 import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -18,12 +17,11 @@ import { MarqueeText } from '@/components/MarqueeText';
 import { MoreOptionsButton } from '@/components/MoreOptionsButton';
 import { PlaybackRateButton } from '@/components/PlaybackRateButton';
 import { PlayerProgressBar } from '@/components/PlayerProgressBar';
-import { QueueItemRow } from '@/components/QueueItemRow';
+import { ReorderableQueueList } from '@/components/player/ReorderableQueueList';
 import { RepeatButton } from '@/components/RepeatButton';
 import { ShuffleButton } from '@/components/ShuffleButton';
 import { ShuffleOverlay } from '@/components/ShuffleOverlay';
 import { SleepTimerCapsule } from '@/components/SleepTimerCapsule';
-import { closeOpenRow } from '@/components/SwipeableRow';
 import { type ThemeColors } from '@/constants/theme';
 import { useCanSkip } from '@/hooks/useCanSkip';
 import { mixHexColors } from '@/utils/colors';
@@ -82,25 +80,6 @@ export function PlayerTabletSplitview() {
     ...colors,
     primary: mixHexColors(colors.primary, colors.textPrimary, 0.45),
   }), [colors]);
-
-  const renderQueueItem = useCallback(
-    ({ item, index }: { item: Child; index: number }) => (
-      <QueueItemRow
-        track={item}
-        index={index}
-        isActive={index === currentTrackIndex}
-        colors={queueColors}
-        onPress={handleQueueItemPress}
-        onLongPress={handleQueueItemLongPress}
-      />
-    ),
-    [currentTrackIndex, queueColors, handleQueueItemPress, handleQueueItemLongPress],
-  );
-
-  const keyExtractor = useCallback(
-    (item: Child, index: number) => `${item.id}-${index}`,
-    [],
-  );
 
   if (!currentTrack) {
     // During queue replacement queueLoading is true while currentTrack is
@@ -176,13 +155,12 @@ export function PlayerTabletSplitview() {
 
       {/* Scrollable queue list */}
       <View style={styles.queueList}>
-        <FlashList
-          data={queue}
-          renderItem={renderQueueItem}
-          keyExtractor={keyExtractor}
-          onScrollBeginDrag={closeOpenRow}
-          drawDistance={200}
-          showsVerticalScrollIndicator={false}
+        <ReorderableQueueList
+          queue={queue}
+          currentTrackIndex={currentTrackIndex}
+          colors={queueColors}
+          onPress={handleQueueItemPress}
+          onLongPress={handleQueueItemLongPress}
           contentContainerStyle={queueContentContainerStyle}
         />
       </View>

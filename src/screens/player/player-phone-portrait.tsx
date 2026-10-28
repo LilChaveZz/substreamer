@@ -1,5 +1,4 @@
 import Ionicons from "@react-native-vector-icons/ionicons/static";
-import { FlashList } from '@shopify/flash-list';
 import { Stack, useNavigation, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
@@ -42,8 +41,7 @@ import { SkipIntervalButton } from '@/components/SkipIntervalButton';
 import { SleepTimerButton } from '@/components/SleepTimerButton';
 import { SleepTimerCapsule } from '@/components/SleepTimerCapsule';
 import { PlaybackSourceBadge } from '@/components/PlaybackSourceBadge';
-import { QueueItemRow } from '@/components/QueueItemRow';
-import { closeOpenRow } from '@/components/SwipeableRow';
+import { ReorderableQueueList } from '@/components/player/ReorderableQueueList';
 import { type ThemeColors } from '@/constants/theme';
 import { useCanSkip } from '@/hooks/useCanSkip';
 import { useCoverGradient } from '@/hooks/useCoverGradient';
@@ -79,7 +77,7 @@ const TAB_FADE_DURATION = 300;
 const TAB_FADE_EASING = Easing.out(Easing.cubic);
 const TAB_SLIDE_DISTANCE = 12;
 
-/** Static content inset for the queue list — module-scope so FlashList isn't
+/** Static content inset for the queue list — module-scope so the list isn't
  *  handed a fresh object on every parent re-render. */
 const QUEUE_CONTENT_CONTAINER_STYLE = { paddingBottom: 12 } as const;
 
@@ -276,25 +274,6 @@ export function PlayerPhonePortrait() {
     primary: mixHexColors(colors.primary, colors.textPrimary, 0.45),
   }), [colors]);
 
-  const renderQueueItem = useCallback(
-    ({ item, index }: { item: Child; index: number }) => (
-      <QueueItemRow
-        track={item}
-        index={index}
-        isActive={index === currentTrackIndex}
-        colors={queueColors}
-        onPress={handleQueueItemPress}
-        onLongPress={handleQueueItemLongPress}
-      />
-    ),
-    [currentTrackIndex, queueColors, handleQueueItemPress, handleQueueItemLongPress],
-  );
-
-  const keyExtractor = useCallback(
-    (item: Child, index: number) => `${item.id}-${index}`,
-    [],
-  );
-
   const queueListHeader = useMemo(
     () => (
       <QueueHeader
@@ -388,14 +367,13 @@ export function PlayerPhonePortrait() {
             pointerEvents={activeTab === 'queue' ? 'auto' : 'none'}
           >
             {mountedTabs.has('queue') && (
-              <FlashList
-                data={queue}
-                renderItem={renderQueueItem}
-                keyExtractor={keyExtractor}
+              <ReorderableQueueList
+                queue={queue}
+                currentTrackIndex={currentTrackIndex}
+                colors={queueColors}
+                onPress={handleQueueItemPress}
+                onLongPress={handleQueueItemLongPress}
                 ListHeaderComponent={queueListHeader}
-                onScrollBeginDrag={closeOpenRow}
-                drawDistance={200}
-                showsVerticalScrollIndicator={false}
                 contentContainerStyle={QUEUE_CONTENT_CONTAINER_STYLE}
               />
             )}

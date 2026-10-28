@@ -1,5 +1,6 @@
 import { memo, useCallback, useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import Ionicons from '@react-native-vector-icons/ionicons/static';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { CachedImage } from './CachedImage';
@@ -35,6 +36,8 @@ export interface QueueItemRowProps {
   colors: Pick<ThemeColors, 'textPrimary' | 'textSecondary' | 'primary' | 'border' | 'red'>;
   onPress: (index: number) => void;
   onLongPress?: (track: Child) => void;
+  onDragHandlePressIn?: () => void;
+  onDragHandlePressOut?: () => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -48,6 +51,8 @@ export const QueueItemRow = memo(function QueueItemRow({
   colors,
   onPress,
   onLongPress,
+  onDragHandlePressIn,
+  onDragHandlePressOut,
 }: QueueItemRowProps) {
   const handlePress = useCallback(() => {
     onPress(index);
@@ -120,69 +125,84 @@ export const QueueItemRow = memo(function QueueItemRow({
   );
 
   return (
-    <SwipeableRow rightActions={rightActions} leftActions={leftActions} enableFullSwipeRight={!isActive} enableFullSwipeLeft={!offlineMode} restingBackgroundColor="transparent" onPress={handlePress} onLongPress={onLongPress ? handleLongPress : undefined}>
-      <View style={[styles.row, { borderBottomColor: colors.border }]}>
-        {/* Cover art with now-playing overlay */}
-        <View style={styles.coverWrap}>
-          <CachedImage
-            coverArtId={track.coverArt}
-            albumId={track.albumId}
-            size={50}
-            style={styles.cover}
-            resizeMode="cover"
-          />
-          {isActive && (
-            <View style={styles.activeOverlay}>
-              <NowPlayingIndicator size={24} color={colors.primary} />
+    <View style={[styles.rowWrapper, { borderBottomColor: colors.border }]}>
+      <View style={styles.swipeableWrap}>
+        <SwipeableRow rightActions={rightActions} leftActions={leftActions} enableFullSwipeRight={!isActive} enableFullSwipeLeft={!offlineMode} restingBackgroundColor="transparent" onPress={handlePress} onLongPress={onLongPress ? handleLongPress : undefined}>
+          <View style={styles.row}>
+            {/* Cover art with now-playing overlay */}
+            <View style={styles.coverWrap}>
+              <CachedImage
+                coverArtId={track.coverArt}
+                albumId={track.albumId}
+                size={50}
+                style={styles.cover}
+                resizeMode="cover"
+              />
+              {isActive && (
+                <View style={styles.activeOverlay}>
+                  <NowPlayingIndicator size={24} color={colors.primary} />
+                </View>
+              )}
             </View>
-          )}
-        </View>
 
-        {/* Track info — title + duration on line 1, artist + status
-            icons on line 2. Mirrors the TrackRow layout so detail-view
-            and play-queue rows have the same shape. */}
-        <View style={styles.info}>
-          <View style={styles.line}>
-            <Text
-              style={[styles.title, { color: titleColor }]}
-              numberOfLines={1}
-            >
-              {track.title}
-            </Text>
-            <RowMetaLine
-              slots={['duration']}
-              durationText={durationText}
-              durationFontSize={14}
-              durationColor={isActive ? colors.primary : undefined}
-            />
+            {/* Track info — title + duration on line 1, artist + status
+                icons on line 2. Mirrors the TrackRow layout so detail-view
+                and play-queue rows have the same shape. */}
+            <View style={styles.info}>
+              <View style={styles.line}>
+                <Text
+                  style={[styles.title, { color: titleColor }]}
+                  numberOfLines={1}
+                >
+                  {track.title}
+                </Text>
+                <RowMetaLine
+                  slots={['duration']}
+                  durationText={durationText}
+                  durationFontSize={14}
+                  durationColor={isActive ? colors.primary : undefined}
+                />
+              </View>
+              <View style={[styles.line, styles.artistLine]}>
+                {track.artist ? (
+                  <Text
+                    style={[styles.artist, { color: subtitleColor }]}
+                    numberOfLines={1}
+                  >
+                    {track.artist}
+                  </Text>
+                ) : (
+                  // Keep the line height stable when artist is missing.
+                  <View style={styles.artistPlaceholder} />
+                )}
+                <RowMetaLine
+                  slots={['rating', 'download', 'heart']}
+                  rating={rating}
+                  starred={starred}
+                  downloadStatus={
+                    downloadStatus === 'complete' || downloadStatus === 'partial'
+                      ? downloadStatus
+                      : 'none'
+                  }
+                />
+              </View>
+            </View>
           </View>
-          <View style={[styles.line, styles.artistLine]}>
-            {track.artist ? (
-              <Text
-                style={[styles.artist, { color: subtitleColor }]}
-                numberOfLines={1}
-              >
-                {track.artist}
-              </Text>
-            ) : (
-              // Keep the line height stable when artist is missing so the
-              // status icons don't shift up onto the title line.
-              <View style={styles.artistPlaceholder} />
-            )}
-            <RowMetaLine
-              slots={['rating', 'download', 'heart']}
-              rating={rating}
-              starred={starred}
-              downloadStatus={
-                downloadStatus === 'complete' || downloadStatus === 'partial'
-                  ? downloadStatus
-                  : 'none'
-              }
-            />
-          </View>
-        </View>
+        </SwipeableRow>
       </View>
-    </SwipeableRow>
+      {onDragHandlePressIn && (
+        <Pressable
+          onPressIn={onDragHandlePressIn}
+          onPressOut={onDragHandlePressOut}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={t('reorderQueueItem')}
+          style={styles.dragHandle}
+        >
+          <Ionicons name="reorder-three" size={26} color={colors.textSecondary} />
+        </Pressable>
+      )}
+    </View>
   );
 });
 
@@ -191,12 +211,25 @@ export const QueueItemRow = memo(function QueueItemRow({
 /* ------------------------------------------------------------------ */
 
 const styles = StyleSheet.create({
+  rowWrapper: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  swipeableWrap: {
+    flex: 1,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  dragHandle: {
+    width: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   coverWrap: {
     width: COVER_SIZE,

@@ -699,6 +699,7 @@
   "clearQueue": "Clear Queue",
   "clearQueueMessage": "This will stop playback and clear the queue.",
   "queue": "Queue",
+  "reorderQueueItem": "Reorder queue item",
   "shareQueue": "Share queue",
   "loading": "Loading…",
   "removeFromFavorites": "Remove from Favorites",

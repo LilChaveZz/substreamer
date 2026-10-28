@@ -132,9 +132,9 @@ jest.mock('@/components/PlayerProgressBar', () => {
   return { PlayerProgressBar: () => <View testID="progress-bar" /> };
 });
 
-jest.mock('@/components/QueueItemRow', () => {
-  const { Text } = require('react-native');
-  return { QueueItemRow: ({ track }: { track: { title: string } }) => <Text>{track.title}</Text> };
+jest.mock('@/components/player/ReorderableQueueList', () => {
+  const { View } = require('react-native');
+  return { ReorderableQueueList: () => <View testID="reorderable-queue-list" /> };
 });
 
 jest.mock('@/components/RepeatButton', () => {

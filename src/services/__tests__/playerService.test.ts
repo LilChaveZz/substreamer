@@ -122,6 +122,7 @@ import {
   retryPlayback,
   clearQueue,
   addToQueue,
+  moveQueueItem,
   removeFromQueue,
   removeNonDownloadedTracks,
   cycleRepeatMode,
@@ -437,6 +438,94 @@ describe('playTrack', () => {
     const queue = [makeChild('t1')];
     await playTrack(queue[0], queue);
     expect(mockSetQueue).toHaveBeenCalledWith(queue);
+  });
+});
+
+describe('moveQueueItem', () => {
+  it('updates the mirror and persistence only after the native move event', async () => {
+    const queue = [makeChild('active'), makeChild('next'), makeChild('later')];
+    await playTrack(queue[0], queue);
+    const { playerStore } = require('../../store/playerStore');
+    (playerStore.getState as jest.Mock).mockReturnValue({
+      ...defaultPlayerState(),
+      currentTrack: queue[0],
+      currentTrackIndex: 0,
+      queue,
+      position: 37,
+      playbackState: 'playing',
+    });
+    mockSetQueue.mockClear();
+    mockSetCurrentTrack.mockClear();
+    mockSetProgress.mockClear();
+    mockSetPlaybackState.mockClear();
+    mockPersistQueue.mockClear();
+
+    await moveQueueItem(2, 1);
+
+    expect(mockTP.moveInQueue).toHaveBeenCalledWith(2, 1);
+    expect(mockSetQueue).not.toHaveBeenCalled();
+    expect(mockPersistQueue).not.toHaveBeenCalled();
+
+    emit('queueChange', {
+      revision: 1,
+      length: 3,
+      inserted: [],
+      insertedAt: -1,
+      removed: [],
+      movedFrom: 2,
+      movedTo: 1,
+      order: [],
+    }, 0, 'move');
+
+    expect(mockSetQueue).toHaveBeenCalledWith([queue[0], queue[2], queue[1]]);
+    expect(mockSetCurrentTrack).toHaveBeenCalledWith(queue[0], 0);
+    expect(mockPersistQueue).toHaveBeenCalledWith([queue[0], queue[2], queue[1]], 0);
+    expect(mockSetProgress).not.toHaveBeenCalled();
+    expect(mockSetPlaybackState).not.toHaveBeenCalled();
+  });
+
+  it('does not optimistically persist a native no-op after playback advances', async () => {
+    const queue = [makeChild('active'), makeChild('next'), makeChild('later')];
+    await playTrack(queue[0], queue);
+    const { playerStore } = require('../../store/playerStore');
+    (playerStore.getState as jest.Mock).mockReturnValue({
+      ...defaultPlayerState(),
+      currentTrack: queue[0],
+      currentTrackIndex: 0,
+      queue,
+    });
+    mockSetQueue.mockClear();
+    mockPersistQueue.mockClear();
+
+    await moveQueueItem(1, 2);
+
+    expect(mockTP.moveInQueue).toHaveBeenCalledWith(1, 2);
+    (playerStore.getState as jest.Mock).mockReturnValue({
+      ...defaultPlayerState(),
+      currentTrack: queue[1],
+      currentTrackIndex: 1,
+      queue,
+    });
+
+    expect(mockSetQueue).not.toHaveBeenCalled();
+    expect(mockPersistQueue).not.toHaveBeenCalled();
+  });
+
+  it('rejects moves into the active or played queue region', async () => {
+    const queue = [makeChild('played'), makeChild('active'), makeChild('next')];
+    await playTrack(queue[1], queue);
+    const { playerStore } = require('../../store/playerStore');
+    (playerStore.getState as jest.Mock).mockReturnValue({
+      ...defaultPlayerState(),
+      currentTrack: queue[1],
+      currentTrackIndex: 1,
+      queue,
+    });
+
+    await moveQueueItem(2, 1);
+    await moveQueueItem(1, 2);
+
+    expect(mockTP.moveInQueue).not.toHaveBeenCalled();
   });
 });
 

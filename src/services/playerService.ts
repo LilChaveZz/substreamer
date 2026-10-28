@@ -195,6 +195,41 @@ export async function initPlayer(): Promise<void> {
     refreshTrackSource();
   });
 
+  tp.onQueueChange((delta, currentIndex, reason) => {
+    if (reason !== 'move') return;
+
+    const { movedFrom, movedTo } = delta;
+    if (
+      delta.length !== currentChildQueue.length
+      || movedFrom < 0
+      || movedFrom >= currentChildQueue.length
+      || movedTo < 0
+      || movedTo >= currentChildQueue.length
+    ) {
+      console.error('RNQP queue move does not match the local queue', delta);
+      return;
+    }
+
+    const nextQueue = [...currentChildQueue];
+    const [movedChild] = nextQueue.splice(movedFrom, 1);
+    if (!movedChild) {
+      console.error('RNQP queue move did not identify a local queue item', delta);
+      return;
+    }
+    nextQueue.splice(movedTo, 0, movedChild);
+    currentChildQueue = nextQueue;
+    const store = playerStore.getState();
+    store.setQueue(nextQueue);
+    store.setCurrentTrack(
+      currentIndex >= 0 ? nextQueue[currentIndex] ?? store.currentTrack : store.currentTrack,
+      currentIndex >= 0 ? currentIndex : null,
+    );
+    if (activeScrobbleIndex != null && currentIndex >= 0) {
+      activeScrobbleIndex = currentIndex;
+    }
+    persistQueue(nextQueue, currentIndex >= 0 ? currentIndex : 0);
+  });
+
   // --- Playback source (local / cached / streaming) → store. No dedicated
   // event, so re-read on the signals that can flip it: a streaming track
   // becomes 'cached' once the lookahead cache holds it / it fully buffers. ---
@@ -990,6 +1025,29 @@ export async function playSongNext(song: Child): Promise<void> {
   playerStore.getState().setQueue(currentChildQueue);
   // Re-read the index AFTER the awaited add in case an auto-advance moved it.
   persistQueue(currentChildQueue, playerStore.getState().currentTrackIndex ?? 0);
+}
+
+/**
+ * Move an upcoming track within the native play queue.
+ * The native queue-change event updates the JS mirror after a real move.
+ */
+export async function moveQueueItem(fromIndex: number, toIndex: number): Promise<void> {
+  await awaitHydration();
+
+  const activeIndex = playerStore.getState().currentTrackIndex ?? -1;
+  if (
+    !Number.isInteger(fromIndex)
+    || !Number.isInteger(toIndex)
+    || fromIndex <= activeIndex
+    || toIndex <= activeIndex
+    || fromIndex >= currentChildQueue.length
+    || toIndex >= currentChildQueue.length
+    || fromIndex === toIndex
+  ) {
+    return;
+  }
+
+  await tp.moveInQueue(fromIndex, toIndex);
 }
 
 /**

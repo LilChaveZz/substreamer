@@ -92,6 +92,7 @@ const trackPlayer = {
   onPlaybackMilestone: makeSub('milestone'),
   onError: makeSub('error'),
   onQueueEnd: makeSub('queueEnd'),
+  onQueueChange: makeSub('queueChange'),
   onGaplessGap: makeSub('gaplessGap'),
   onSkipCapabilityChange: makeSub('skipCapability'),
   onSleepTimerChange: makeSub('sleepTimer'),

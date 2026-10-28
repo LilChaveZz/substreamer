@@ -1,6 +1,5 @@
 import Ionicons from "@react-native-vector-icons/ionicons/static";
 import MaterialCommunityIcons from "@react-native-vector-icons/material-design-icons/static";
-import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,14 +28,13 @@ import { MarqueeText } from '@/components/MarqueeText';
 import { MoreOptionsButton } from '@/components/MoreOptionsButton';
 import { PlaybackRateButton } from '@/components/PlaybackRateButton';
 import { PlayerProgressBar } from '@/components/PlayerProgressBar';
-import { QueueItemRow } from '@/components/QueueItemRow';
+import { ReorderableQueueList } from '@/components/player/ReorderableQueueList';
 import { RepeatButton } from '@/components/RepeatButton';
 import { ShuffleButton } from '@/components/ShuffleButton';
 import { ShuffleOverlay } from '@/components/ShuffleOverlay';
 import { SkipIntervalButton } from '@/components/SkipIntervalButton';
 import { SleepTimerButton } from '@/components/SleepTimerButton';
 import { SleepTimerCapsule } from '@/components/SleepTimerCapsule';
-import { closeOpenRow } from '@/components/SwipeableRow';
 import { useCanSkip } from '@/hooks/useCanSkip';
 import { useCoverGradient } from '@/hooks/useCoverGradient';
 import { mixHexColors } from '@/utils/colors';
@@ -218,25 +216,6 @@ export function PlayerTabletLandscape({
     ...colors,
     primary: mixHexColors(colors.primary, colors.textPrimary, 0.45),
   }), [colors]);
-
-  const renderQueueItem = useCallback(
-    ({ item, index }: { item: Child; index: number }) => (
-      <QueueItemRow
-        track={item}
-        index={index}
-        isActive={index === currentTrackIndex}
-        colors={queueColors}
-        onPress={handleQueueItemPress}
-        onLongPress={handleQueueItemLongPress}
-      />
-    ),
-    [currentTrackIndex, queueColors, handleQueueItemPress, handleQueueItemLongPress],
-  );
-
-  const keyExtractor = useCallback(
-    (item: Child, index: number) => `${item.id}-${index}`,
-    [],
-  );
 
   if (!currentTrack) return null;
 
@@ -498,13 +477,12 @@ export function PlayerTabletLandscape({
 
                   {/* Queue list */}
                   <View style={styles.queueList}>
-                    <FlashList
-                      data={queue}
-                      renderItem={renderQueueItem}
-                      keyExtractor={keyExtractor}
-                      onScrollBeginDrag={closeOpenRow}
-                      drawDistance={200}
-                      showsVerticalScrollIndicator={false}
+                    <ReorderableQueueList
+                      queue={queue}
+                      currentTrackIndex={currentTrackIndex}
+                      colors={queueColors}
+                      onPress={handleQueueItemPress}
+                      onLongPress={handleQueueItemLongPress}
                     />
                   </View>
                 </>
