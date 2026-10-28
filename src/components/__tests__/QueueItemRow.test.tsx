@@ -157,6 +157,10 @@ describe('QueueItemRow other actions', () => {
     });
 
     const handle = screen.getByLabelText('Reorder queue item');
+    expect(handle.props.style).toMatchObject({ width: 48, marginRight: 8 });
+    expect(screen.getByTestId('queue-duration-nudge').props.style).toMatchObject({
+      transform: [{ translateY: 4 }],
+    });
     fireEvent(handle, 'pressIn');
     fireEvent(handle, 'pressOut');
 

@@ -29,7 +29,7 @@ The sidecar coordinates playback state; it does not relay audio or stream URLs.
 A room member can control playback for everyone in the room.
 Members can reorder upcoming tracks from the player queue. The new order is
 shared with the room without restarting the active track; the active track and
-previously played tracks cannot be moved.
+previously played rows stay fixed during a drag and cannot be moved.
 
 Substreamer authenticates to the sidecar with the configured server URL,
 username, and a salted MD5 password token. The raw password and Jam session are

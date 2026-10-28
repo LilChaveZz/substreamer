@@ -156,12 +156,14 @@ export const QueueItemRow = memo(function QueueItemRow({
                 >
                   {track.title}
                 </Text>
-                <RowMetaLine
-                  slots={['duration']}
-                  durationText={durationText}
-                  durationFontSize={14}
-                  durationColor={isActive ? colors.primary : undefined}
-                />
+                <View testID="queue-duration-nudge" style={styles.durationNudge}>
+                  <RowMetaLine
+                    slots={['duration']}
+                    durationText={durationText}
+                    durationFontSize={14}
+                    durationColor={isActive ? colors.primary : undefined}
+                  />
+                </View>
               </View>
               <View style={[styles.line, styles.artistLine]}>
                 {track.artist ? (
@@ -228,8 +230,12 @@ const styles = StyleSheet.create({
   },
   dragHandle: {
     width: 48,
+    marginRight: 8,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  durationNudge: {
+    transform: [{ translateY: 4 }],
   },
   coverWrap: {
     width: COVER_SIZE,
