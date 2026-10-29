@@ -150,22 +150,18 @@ describe('QueueItemRow other actions', () => {
 
   it('keeps the reorder handle separate from row press and long-press actions', () => {
     const onDragHandlePressIn = jest.fn();
-    const onDragHandlePressOut = jest.fn();
     const { onPress, onLongPress } = renderRow({
       onDragHandlePressIn,
-      onDragHandlePressOut,
     });
 
     const handle = screen.getByLabelText('Reorder queue item');
     expect(handle.props.style).toMatchObject({ width: 48, marginRight: 8 });
     expect(screen.getByTestId('queue-duration-nudge').props.style).toMatchObject({
-      transform: [{ translateY: 4 }],
+      transform: [{ translateY: 8 }],
     });
     fireEvent(handle, 'pressIn');
-    fireEvent(handle, 'pressOut');
 
     expect(onDragHandlePressIn).toHaveBeenCalledTimes(1);
-    expect(onDragHandlePressOut).toHaveBeenCalledTimes(1);
     expect(onPress).not.toHaveBeenCalled();
     expect(onLongPress).not.toHaveBeenCalled();
   });

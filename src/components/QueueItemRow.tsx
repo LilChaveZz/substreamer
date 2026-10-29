@@ -37,7 +37,6 @@ export interface QueueItemRowProps {
   onPress: (index: number) => void;
   onLongPress?: (track: Child) => void;
   onDragHandlePressIn?: () => void;
-  onDragHandlePressOut?: () => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -52,7 +51,6 @@ export const QueueItemRow = memo(function QueueItemRow({
   onPress,
   onLongPress,
   onDragHandlePressIn,
-  onDragHandlePressOut,
 }: QueueItemRowProps) {
   const handlePress = useCallback(() => {
     onPress(index);
@@ -195,7 +193,6 @@ export const QueueItemRow = memo(function QueueItemRow({
       {onDragHandlePressIn && (
         <Pressable
           onPressIn={onDragHandlePressIn}
-          onPressOut={onDragHandlePressOut}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={t('reorderQueueItem')}
@@ -235,7 +232,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   durationNudge: {
-    transform: [{ translateY: 4 }],
+    transform: [{ translateY: 8 }],
   },
   coverWrap: {
     width: COVER_SIZE,

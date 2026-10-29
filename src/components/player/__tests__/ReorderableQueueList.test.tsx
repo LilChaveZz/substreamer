@@ -14,7 +14,7 @@ interface CapturedListProps {
   renderItem: (info: { item: CapturedQueueEntry; index: number }) => React.ReactElement;
   keyExtractor: (item: CapturedQueueEntry, index: number) => string;
   onReorder: (event: { from: number; to: number }) => void;
-  onDragEnd: () => void;
+  onDragEnd: (event: { from: number; to: number }) => void;
   scrollEnabled: boolean;
   ListHeaderComponent?: React.ReactElement;
 }
@@ -69,13 +69,11 @@ jest.mock('../../QueueItemRow', () => {
       index,
       onPress,
       onDragHandlePressIn,
-      onDragHandlePressOut,
     }: {
       track: Child;
       index: number;
       onPress: (index: number) => void;
       onDragHandlePressIn?: () => void;
-      onDragHandlePressOut?: () => void;
     }) => (
       <View>
         <Text>{track.id}</Text>
@@ -84,7 +82,6 @@ jest.mock('../../QueueItemRow', () => {
           <Pressable
             testID={`drag-handle-${track.id}`}
             onPressIn={onDragHandlePressIn}
-            onPressOut={onDragHandlePressOut}
           />
         )}
       </View>
@@ -119,6 +116,10 @@ function latestListProps(): CapturedListProps {
   return latest;
 }
 
+function enterReorderMode() {
+  fireEvent.press(screen.getByTestId('queue-reorder-mode-toggle'));
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockMoveQueueItem.mockResolvedValue(undefined);
@@ -126,7 +127,7 @@ beforeEach(() => {
 });
 
 describe('ReorderableQueueList', () => {
-  it('shows drag handles only after the active track', () => {
+  it('shows the edit control for upcoming tracks and hides handles before editing', () => {
     render(
       <ReorderableQueueList
         queue={queue}
@@ -150,8 +151,80 @@ describe('ReorderableQueueList', () => {
     expect(screen.getByTestId('row-press-1')).toBeTruthy();
     expect(screen.queryByTestId('drag-handle-played')).toBeNull();
     expect(screen.queryByTestId('drag-handle-active')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy();
+    expect(screen.queryByTestId('drag-handle-upcoming-1')).toBeNull();
+    expect(screen.queryByTestId('drag-handle-upcoming-2')).toBeNull();
+  });
+
+  it('disables scrolling for reorder mode and restores it only after Done', () => {
+    render(
+      <ReorderableQueueList
+        queue={queue}
+        currentTrackIndex={1}
+        colors={{
+          textPrimary: '#fff',
+          textSecondary: '#888',
+          primary: '#f60',
+          border: '#333',
+          red: '#f00',
+        }}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(latestListProps().scrollEnabled).toBe(true);
+    enterReorderMode();
+    expect(latestListProps().scrollEnabled).toBe(false);
     expect(screen.getByTestId('drag-handle-upcoming-1')).toBeTruthy();
     expect(screen.getByTestId('drag-handle-upcoming-2')).toBeTruthy();
+
+    fireEvent(screen.getByTestId('drag-handle-upcoming-1'), 'pressIn');
+    expect(mockDrag).toHaveBeenCalledTimes(1);
+    act(() => latestListProps().onDragEnd({ from: 0, to: 0 }));
+    expect(latestListProps().scrollEnabled).toBe(false);
+
+    enterReorderMode();
+    expect(latestListProps().scrollEnabled).toBe(true);
+    expect(screen.queryByTestId('drag-handle-upcoming-1')).toBeNull();
+  });
+
+  it('keeps Done available if the queue shrinks while reordering', () => {
+    const { rerender } = render(
+      <ReorderableQueueList
+        queue={queue}
+        currentTrackIndex={1}
+        colors={{
+          textPrimary: '#fff',
+          textSecondary: '#888',
+          primary: '#f60',
+          border: '#333',
+          red: '#f00',
+        }}
+        onPress={jest.fn()}
+      />,
+    );
+
+    enterReorderMode();
+    rerender(
+      <ReorderableQueueList
+        queue={queue.slice(0, 3)}
+        currentTrackIndex={1}
+        colors={{
+          textPrimary: '#fff',
+          textSecondary: '#888',
+          primary: '#f60',
+          border: '#333',
+          red: '#f00',
+        }}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(latestListProps().scrollEnabled).toBe(false);
+    expect(screen.getByRole('button', { name: 'Done' })).toBeTruthy();
+    enterReorderMode();
+    expect(latestListProps().scrollEnabled).toBe(true);
+    expect(screen.queryByTestId('queue-reorder-mode-toggle')).toBeNull();
   });
 
   it('keeps fixed-row presses mapped to their queue indexes', () => {
@@ -224,7 +297,7 @@ describe('ReorderableQueueList', () => {
     expect(latestListProps().ListHeaderComponent).toBeUndefined();
   });
 
-  it('locks scrolling from handle touch-down until the gesture ends', () => {
+  it('keeps reorder snapshots while dragging', () => {
     render(
       <ReorderableQueueList
         queue={queue}
@@ -240,12 +313,36 @@ describe('ReorderableQueueList', () => {
       />,
     );
 
+    enterReorderMode();
     fireEvent(screen.getByTestId('drag-handle-upcoming-1'), 'pressIn');
     expect(latestListProps().scrollEnabled).toBe(false);
     expect(mockDrag).toHaveBeenCalledTimes(1);
 
-    act(() => latestListProps().onDragEnd());
-    expect(latestListProps().scrollEnabled).toBe(true);
+    act(() => latestListProps().onDragEnd({ from: 0, to: 0 }));
+    expect(latestListProps().scrollEnabled).toBe(false);
+  });
+
+  it('clears the drag snapshot when the item did not move', () => {
+    render(
+      <ReorderableQueueList
+        queue={queue}
+        currentTrackIndex={1}
+        colors={{
+          textPrimary: '#fff',
+          textSecondary: '#888',
+          primary: '#f60',
+          border: '#333',
+          red: '#f00',
+        }}
+        onPress={jest.fn()}
+      />,
+    );
+
+    enterReorderMode();
+    fireEvent(screen.getByTestId('drag-handle-upcoming-1'), 'pressIn');
+    latestListProps().onDragEnd({ from: 0, to: 0 });
+    latestListProps().onReorder({ from: 0, to: 1 });
+    expect(mockMoveQueueItem).not.toHaveBeenCalled();
   });
 
   it('maps reorder indexes to the upcoming section of the queue', () => {
@@ -264,7 +361,9 @@ describe('ReorderableQueueList', () => {
       />,
     );
 
+    enterReorderMode();
     fireEvent(screen.getByTestId('drag-handle-upcoming-2'), 'pressIn');
+    latestListProps().onDragEnd({ from: 1, to: 0 });
     latestListProps().onReorder({ from: 1, to: 0 });
     expect(mockMoveQueueItem).toHaveBeenCalledWith(3, 2);
   });
@@ -286,6 +385,7 @@ describe('ReorderableQueueList', () => {
     );
 
     latestListProps().onReorder({ from: 0, to: 1 });
+    enterReorderMode();
     fireEvent(screen.getByTestId('drag-handle-upcoming-1'), 'pressIn');
     latestListProps().onReorder({ from: -1, to: 0 });
     latestListProps().onReorder({ from: 0, to: 2 });
@@ -312,9 +412,10 @@ describe('ReorderableQueueList', () => {
       />,
     );
 
+    enterReorderMode();
     fireEvent(screen.getByTestId('drag-handle-upcoming-1'), 'pressIn');
     expect(mockDrag).not.toHaveBeenCalled();
-    expect(latestListProps().scrollEnabled).toBe(true);
+    expect(latestListProps().scrollEnabled).toBe(false);
   });
 
   it('rejects a drop if playback advances during the drag', () => {
@@ -333,6 +434,7 @@ describe('ReorderableQueueList', () => {
       />,
     );
 
+    enterReorderMode();
     fireEvent(screen.getByTestId('drag-handle-upcoming-1'), 'pressIn');
     mockPlayerState = { currentTrackIndex: 2, queue };
     latestListProps().onReorder({ from: 0, to: 1 });
@@ -355,6 +457,7 @@ describe('ReorderableQueueList', () => {
       />,
     );
 
+    enterReorderMode();
     fireEvent(screen.getByTestId('drag-handle-upcoming-1'), 'pressIn');
     mockPlayerState = {
       currentTrackIndex: 1,
@@ -380,6 +483,7 @@ describe('ReorderableQueueList', () => {
       />,
     );
 
+    enterReorderMode();
     fireEvent(screen.getByTestId('drag-handle-upcoming-1'), 'pressIn');
     mockPlayerState = {
       currentTrackIndex: 1,
@@ -406,6 +510,7 @@ describe('ReorderableQueueList', () => {
       />,
     );
 
+    enterReorderMode();
     fireEvent(screen.getByTestId('drag-handle-upcoming-1'), 'pressIn');
     await act(async () => {
       latestListProps().onReorder({ from: 0, to: 1 });

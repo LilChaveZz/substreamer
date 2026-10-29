@@ -1,8 +1,17 @@
 import { Fragment, memo, useCallback, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
-import { type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import { useTranslation } from 'react-i18next';
 import ReorderableList, {
   useReorderableDrag,
+  type ReorderableListDragEndEvent,
   type ReorderableListReorderEvent,
 } from 'react-native-reorderable-list';
 import { runOnJS } from 'react-native-reanimated';
@@ -43,7 +52,7 @@ interface ReorderableQueueRowProps {
   onPress: ReorderableQueueListProps['onPress'];
   onLongPress: ReorderableQueueListProps['onLongPress'];
   onHandleHeld: (track: Child, index: number) => boolean;
-  onHandleReleased: () => void;
+  reorderMode: boolean;
 }
 
 const ReorderableQueueRow = memo(function ReorderableQueueRow({
@@ -53,7 +62,7 @@ const ReorderableQueueRow = memo(function ReorderableQueueRow({
   onPress,
   onLongPress,
   onHandleHeld,
-  onHandleReleased,
+  reorderMode,
 }: ReorderableQueueRowProps) {
   const drag = useReorderableDrag();
   const handlePressIn = useCallback(() => {
@@ -68,8 +77,7 @@ const ReorderableQueueRow = memo(function ReorderableQueueRow({
       colors={colors}
       onPress={onPress}
       onLongPress={onLongPress}
-      onDragHandlePressIn={handlePressIn}
-      onDragHandlePressOut={onHandleReleased}
+      onDragHandlePressIn={reorderMode ? handlePressIn : undefined}
     />
   );
 });
@@ -84,7 +92,8 @@ export const ReorderableQueueList = memo(function ReorderableQueueList({
   contentContainerStyle,
   ListHeaderComponent,
 }: ReorderableQueueListProps) {
-  const [handleHeld, setHandleHeld] = useState(false);
+  const [reorderMode, setReorderMode] = useState(false);
+  const { t } = useTranslation();
   const queueEntryKeys = useRef(new WeakMap<Child, string>());
   const nextQueueEntryKey = useRef(0);
   const dragSnapshot = useRef<DragSnapshot | null>(null);
@@ -128,21 +137,22 @@ export const ReorderableQueueList = memo(function ReorderableQueueList({
       queue: [...state.queue],
       currentTrackIndex: state.currentTrackIndex,
     };
-    setHandleHeld(true);
     return true;
   }, []);
-  const handleHeldOff = useCallback(() => setHandleHeld(false), []);
-  const releaseDrag = useCallback(() => {
+  const clearDragSnapshot = useCallback(() => {
     dragSnapshot.current = null;
-    setHandleHeld(false);
   }, []);
-  const releaseHandleOnDragEnd = useCallback(() => {
-    'worklet';
-    runOnJS(releaseDrag)();
-  }, [releaseDrag]);
+  const releaseHandleOnDragEnd = useCallback(
+    ({ from, to }: ReorderableListDragEndEvent) => {
+      'worklet';
+      if (from === to) runOnJS(clearDragSnapshot)();
+    },
+    [clearDragSnapshot],
+  );
 
   const handleReorder = useCallback(({ from, to }: ReorderableListReorderEvent) => {
     const snapshot = dragSnapshot.current;
+    dragSnapshot.current = null;
     if (!snapshot) return;
 
     const state = playerStore.getState();
@@ -187,10 +197,10 @@ export const ReorderableQueueList = memo(function ReorderableQueueList({
         onPress={onPress}
         onLongPress={onLongPress}
         onHandleHeld={handleHeldOn}
-        onHandleReleased={handleHeldOff}
+        reorderMode={reorderMode}
       />
     ),
-    [colors, currentTrackIndex, handleHeldOff, handleHeldOn, onLongPress, onPress, upcomingStart],
+    [colors, handleHeldOn, onLongPress, onPress, reorderMode, upcomingStart],
   );
   const keyExtractor = useCallback((item: QueueEntry) => item.key, []);
   const fixedRows = useMemo(
@@ -217,20 +227,68 @@ export const ReorderableQueueList = memo(function ReorderableQueueList({
       </Fragment>
     );
   }, [ListHeaderComponent, fixedRows]);
+  const showReorderToggle = reorderMode || upcomingEntries.length > 1;
 
   return (
-    <ReorderableList
-      data={upcomingEntries}
-      renderItem={renderItem}
-      keyExtractor={keyExtractor}
-      onReorder={handleReorder}
-      onDragEnd={releaseHandleOnDragEnd}
-      scrollEnabled={!handleHeld}
-      onScrollBeginDrag={closeOpenRow}
-      showsVerticalScrollIndicator={false}
-      ListHeaderComponent={listHeader}
-      style={style}
-      contentContainerStyle={contentContainerStyle}
-    />
+    <View style={styles.container}>
+      {showReorderToggle && (
+        <View style={[styles.modeBar, { borderBottomColor: colors.border }]}>
+          <Pressable
+            testID="queue-reorder-mode-toggle"
+            onPress={() => setReorderMode((active) => !active)}
+            accessibilityRole="button"
+            accessibilityLabel={t(reorderMode ? 'done' : 'edit')}
+            accessibilityState={{ selected: reorderMode }}
+            style={({ pressed }) => [styles.modeButton, pressed && styles.pressed]}
+          >
+            <Text style={[styles.modeLabel, { color: colors.primary }]}>
+              {t(reorderMode ? 'done' : 'edit')}
+            </Text>
+          </Pressable>
+        </View>
+      )}
+      <ReorderableList
+        data={upcomingEntries}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        onReorder={handleReorder}
+        onDragEnd={releaseHandleOnDragEnd}
+        scrollEnabled={!reorderMode}
+        onScrollBeginDrag={closeOpenRow}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={listHeader}
+        style={[style, styles.list]}
+        contentContainerStyle={contentContainerStyle}
+      />
+    </View>
   );
+});
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  modeBar: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  modeButton: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  modeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  pressed: {
+    opacity: 0.65,
+  },
+  list: {
+    flex: 1,
+  },
 });
