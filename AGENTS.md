@@ -448,3 +448,4 @@ When the user corrects your approach, append a one-line rule here before ending 
 - User-facing copy: never a comma before "and"; write "one time" as two words, never "one-time".
 - Shares exist for albums, playlists and the player queue — not individual songs.
 - Drop a one-line status note when working silently for a long stretch.
+- For UI feedback loops, verify the core interaction once, then let the owner test and report; avoid repeated emulator probes of hard-to-interpret visual state.
